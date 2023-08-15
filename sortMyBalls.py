@@ -4,7 +4,8 @@ import time
 from datetime import datetime
 import serial
 import collections
-ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+
+ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
 t = time.time()
 r = 45 # increment by
 flipRevolver = True
@@ -18,6 +19,7 @@ class sorter(object):
         self.revolver = revolver
         self.revolver.set_mode(4)
         self.revolver.set_enable(True)
+        print("revolver pos:    ", self.revolver.get_position())
         # self.revolver.set_profile_velocity(6/8)
         
         self.last_ball = 'n'
@@ -31,7 +33,7 @@ class sorter(object):
 
         
     def zero_revolver(self):
-        currPos = revolver.get_extended_position()
+        currPos = self.revolver.get_extended_position()
         print("currPos              ", currPos)
         print("r                    ",r)
         ri = self.__round_to_multiple(currPos, r) / r
@@ -129,13 +131,13 @@ if __name__ == '__main__':
     # s.next_ball()
     iterator = 0
     while True:
-        # iterator += 1
-        # print(iterator, " balls ", s.get_ball_color())
+        iterator += 1
+        print(iterator, " balls ", s.get_ball_color())
         # s.next_ball()
         # time.sleep(.01)
-        s.update()
-        time.sleep(.001)
-        print(time.time())
+        # s.update()
+        # time.sleep(.001)
+        # print(time.time())
         # s.set_arm(-1)
         # time.sleep(1)
         # s.set_arm(1)

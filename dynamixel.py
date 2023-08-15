@@ -67,7 +67,7 @@ PROTOCOL_VERSION            = 2.0
 
 # Use the actual port assigned to the U2D2.
 # ex) Windows: "COM*", Linux: "/dev/ttyUSB*", Mac: "/dev/tty.usbserial-*"
-DEVICENAME                  = '/dev/ttyACM0'
+DEVICENAME                  = '/dev/ttyUSB0'
 
 TORQUE_ENABLE               = 1     # Value for enabling the torque
 TORQUE_DISABLE              = 0     # Value for disabling the torque
@@ -479,8 +479,9 @@ class dynamixel(object):
         print()
 
 if __name__  == '__main__':
+    id_to_test = 2
     if False:  # 0      # Test Current
-        motor3 = dynamixel(ID = 2, op = 0)
+        motor3 = dynamixel(ID = id_to_test, op = 0)
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_enable(True)
         val = 50
@@ -494,7 +495,7 @@ if __name__  == '__main__':
             time.sleep(2)
    
     if False:  # 1      # Test Velocity
-        motor3 = dynamixel(ID = 1, op = "Velocity")
+        motor3 = dynamixel(ID = id_to_test, op = "Velocity")
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_profile_velocity(rpm=120)
         motor3.set_enable(True)
@@ -507,7 +508,7 @@ if __name__  == '__main__':
             time.sleep(2)  
                       
     if True:  # 3      # Test Position
-        motor3 = dynamixel(ID = 1, op = "Position")
+        motor3 = dynamixel(ID = id_to_test, op = "Position")
         motor3.set_profile_acceleration(rpm_pm=5000)
         print("profile acceleration is ", motor3.get_profile_acceleration(), " rpmpm")
         motor3.set_profile_velocity(rpm=40, inTicks=False)
@@ -523,7 +524,7 @@ if __name__  == '__main__':
             time.sleep(1)        
    
     if False:  # 4      # Test Extended Position
-        motor3 = dynamixel(ID = 2, op = "Extended_Position")
+        motor3 = dynamixel(ID = id_to_test, op = "Extended_Position")
         motor3.set_profile_acceleration(rpm_pm=20000)
         print("profile acceleration is ", motor3.get_profile_acceleration(), " rpmpm")
         motor3.set_profile_velocity(rpm=400, inTicks=False)
@@ -538,7 +539,7 @@ if __name__  == '__main__':
             time.sleep(3)
    
     if False:  # 5      # Test Extended Position Current
-        motor3 = dynamixel(ID = 1, op = 5)
+        motor3 = dynamixel(ID = id_to_test, op = 5)
         motor3.set_profile_acceleration(rpm_pm=2000)
         motor3.set_enable(True)
         print("Motor ", motor3.get_id(), " enabled state is ", motor3.get_enabled())
@@ -555,7 +556,7 @@ if __name__  == '__main__':
                 time.sleep(1/hz)
    
     if False:  # 16     # Test PWM
-        motor3 = dynamixel(ID = 2, op = "PWM")
+        motor3 = dynamixel(ID = id_to_test, op = "PWM")
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_enable(True)
         val = 10
