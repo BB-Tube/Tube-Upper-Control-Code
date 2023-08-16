@@ -479,7 +479,7 @@ class dynamixel(object):
         print()
 
 if __name__  == '__main__':
-    id_to_test = 2
+    id_to_test = 3
     if False:  # 0      # Test Current
         motor3 = dynamixel(ID = id_to_test, op = 0)
         # motor3.set_profile_acceleration(rpm_pm=50)

@@ -5,7 +5,7 @@ from datetime import datetime
 import serial
 import collections
 
-ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+ser = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
 t = time.time()
 r = 45 # increment by
 flipRevolver = True
@@ -13,13 +13,11 @@ flipRevolver = True
 last_ball = 'n'
 
 class sorter(object):
-    
-    
+     
     def __init__(self, revolver : dynamixel, arm : dynamixel, revolver_count = 8):
         self.revolver = revolver
         self.revolver.set_mode(4)
         self.revolver.set_enable(True)
-        print("revolver pos:    ", self.revolver.get_position())
         # self.revolver.set_profile_velocity(6/8)
         
         self.last_ball = 'n'
@@ -30,7 +28,6 @@ class sorter(object):
         
         self.revolver_increment = self.zero_revolver()
         revolver.set_extended_position(self.revolver_increment * r)
-
         
     def zero_revolver(self):
         currPos = self.revolver.get_extended_position()
@@ -41,17 +38,16 @@ class sorter(object):
         goto = ri * r
         print("goto                 ", goto)
         return ri
-            
-        
+                  
     def next_ball(self):
         if flipRevolver:
             self.revolver_increment += -1
         else:
             self.revolver_increment += 1
-        goal = self.revolver_increment * r
+        goal = self.revolver_increment * r 
         self.revolver.set_extended_position(goal)
-        diff = 10
-        while not abs(diff) < 8:
+        diff = 1000
+        while not abs(diff) < 30:
             self.revolver.set_extended_position(goal)
             diff = goal - self.revolver.get_extended_position()
         
@@ -132,10 +128,11 @@ if __name__ == '__main__':
     iterator = 0
     while True:
         iterator += 1
-        print(iterator, " balls ", s.get_ball_color())
+        # print("get balls")
+        # print(iterator, " balls ", s.get_ball_color())
         # s.next_ball()
         # time.sleep(.01)
-        # s.update()
+        s.update()
         # time.sleep(.001)
         # print(time.time())
         # s.set_arm(-1)
