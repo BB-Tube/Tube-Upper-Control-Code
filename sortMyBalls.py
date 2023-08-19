@@ -72,8 +72,20 @@ class sorter(object):
             if echo_message:
                 return echo_message
         return None
-    
+
+    def set_arm(self, angle):
+        offset = 12
+        neutral = 181
+        goal = neutral + angle * offset
+        self.arm.set_position(goal)
+        diff = 10
+        time.sleep(.01)
+            
     def update(self):
+        # Within Target Threshhold ?
+        #   If revolver there +/- 30 -> read the color 3 times and use mode
+        #   Arm no restriction - timing should take same amount as arm
+        
         # print("sample")
         sample = 3
         balls_read = ""
@@ -81,9 +93,6 @@ class sorter(object):
         for i in range(sample):
             balls_read = balls_read + self.get_ball_color()
         ball_color = collections.Counter(balls_read).most_common(1)[0][0]
-
-        # print("balls_read:  ", balls_read)
-        # print("ball_color:  ", ball_color)
         
         # print(ball_color)
         if  ball_color == 'n':
@@ -106,18 +115,6 @@ class sorter(object):
             # print("next ball")
             self.next_ball()
 
-    def set_arm(self, angle):
-        offset = 12
-        neutral = 181
-        goal = neutral + angle * offset
-        self.arm.set_position(goal)
-        diff = 10
-        time.sleep(.01)
-        while False and not abs(diff) < 10:
-            # print(self.arm.get_position())
-            # print(diff)
-            # time.sleep(.01)
-            diff = goal - self.arm.get_position()
 
 if __name__ == '__main__':
     arm = dynamixel(ID = 3, op = 3)
@@ -128,15 +125,4 @@ if __name__ == '__main__':
     iterator = 0
     while True:
         iterator += 1
-        # print("get balls")
-        # print(iterator, " balls ", s.get_ball_color())
-        # s.next_ball()
-        # time.sleep(.01)
         s.update()
-        # time.sleep(.001)
-        # print(time.time())
-        # s.set_arm(-1)
-        # time.sleep(1)
-        # s.set_arm(1)
-        # time.sleep(1)
-
