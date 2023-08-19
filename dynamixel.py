@@ -1,6 +1,15 @@
 import os
 import time
 
+invOpModes = {
+    0:"Current",
+    1:"Velocity",
+    3:"Position",
+    4:"Extended_Position",
+    5:"Current-based_Position",
+    16:"PWM"
+}
+
 if os.name == 'nt':
     import msvcrt
     def getch():
@@ -45,8 +54,8 @@ ADDR_PRESENT_TEMPERATURE    = 146
 MINIMUM_POSITION_VALUE      = 0         # Refer to the Minimum Position Limit of product eManual
 MAXIMUM_POSITION_VALUE      = 4095      # Refer to the Maximum Position Limit of product eManual
 TICK_PER_DEGREE             = 4096 / 360
-MINIMUM_VELOCITY_VALUE      = -445
-MAXIMUM_VELOCITY_VALUE      = 445
+MINIMUM_VELOCITY_VALUE      = -260
+MAXIMUM_VELOCITY_VALUE      = 260
 RPM_PER_TICK                = 0.229
 MINIMUM_CURRENT_VALUE       = -1188
 MAXIMUM_CURRENT_VALUE       = 1188
@@ -101,14 +110,6 @@ else:
     getch()
     quit()
 
-invOpModes = {
-    0:"Current",
-    1:"Velocity",
-    3:"Position",
-    4:"Extended_Position",
-    5:"Current-based_Position",
-    16:"PWM"
-}
 OpModes = {v: k for k, v in invOpModes.items()}
 
 class DynamixelCommunicationError(Exception):
@@ -262,7 +263,7 @@ class dynamixel(object):
                 self.__mode_check([0])
             if not inTick:
                 dxl_goal_current = round(goal_current / MILLI_AMP_PER_TICK)
-                print("dxl_goal_current : ", dxl_goal_current)
+                # print("dxl_goal_current : ", dxl_goal_current)
             else:
                 dxl_goal_current = goal_current
             self.__current_range_check(dxl_goal_current)
@@ -479,8 +480,9 @@ class dynamixel(object):
         print()
 
 if __name__  == '__main__':
-    id_to_test = 3
-    if False:  # 0      # Test Current
+    id_to_test = 2
+    test_op = 4
+    if test_op == 0:  # 0      # Test Current
         motor3 = dynamixel(ID = id_to_test, op = 0)
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_enable(True)
@@ -494,7 +496,7 @@ if __name__  == '__main__':
             motor3.print()
             time.sleep(2)
    
-    if False:  # 1      # Test Velocity
+    if test_op == 1:  # 1      # Test Velocity
         motor3 = dynamixel(ID = id_to_test, op = "Velocity")
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_profile_velocity(rpm=120)
@@ -507,7 +509,7 @@ if __name__  == '__main__':
             motor3.print()
             time.sleep(2)  
                       
-    if True:  # 3      # Test Position
+    if test_op == 3:  # 3      # Test Position
         motor3 = dynamixel(ID = id_to_test, op = "Position")
         motor3.set_profile_acceleration(rpm_pm=5000)
         print("profile acceleration is ", motor3.get_profile_acceleration(), " rpmpm")
@@ -523,7 +525,7 @@ if __name__  == '__main__':
             motor3.print()
             time.sleep(1)        
    
-    if False:  # 4      # Test Extended Position
+    if test_op == 4:  # 4      # Test Extended Position
         motor3 = dynamixel(ID = id_to_test, op = "Extended_Position")
         motor3.set_profile_acceleration(rpm_pm=20000)
         print("profile acceleration is ", motor3.get_profile_acceleration(), " rpmpm")
@@ -538,7 +540,7 @@ if __name__  == '__main__':
             motor3.print()
             time.sleep(3)
    
-    if False:  # 5      # Test Extended Position Current
+    if test_op == 5:  # 5      # Test Extended Position Current
         motor3 = dynamixel(ID = id_to_test, op = 5)
         motor3.set_profile_acceleration(rpm_pm=2000)
         motor3.set_enable(True)
@@ -555,7 +557,7 @@ if __name__  == '__main__':
                 motor3.print()
                 time.sleep(1/hz)
    
-    if False:  # 16     # Test PWM
+    if test_op == 16:  # 16     # Test PWM
         motor3 = dynamixel(ID = id_to_test, op = "PWM")
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_enable(True)

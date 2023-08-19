@@ -12,18 +12,29 @@ flipRevolver = True
 
 last_ball = 'n'
 
+
+# BALL INFORMATION 
+BALL_NONE = 'n'
+BALL_BLACK = 'b'
+BALL_WHITE = 'w'
+ball_print = {
+    BALL_NONE : "None",
+    BALL_BLACK : "Black",
+    BALL_WHITE : "White"
+}
+
 class sorter(object):
      
     def __init__(self, revolver : dynamixel, arm : dynamixel, revolver_count = 8):
         self.revolver = revolver
-        self.revolver.set_mode(4)
+        self.revolver.set_mode("Extended_Position")
         self.revolver.set_enable(True)
         # self.revolver.set_profile_velocity(6/8)
         
         self.last_ball = 'n'
         
         self.arm = arm
-        self.arm.set_mode(3)
+        self.arm.set_mode("Position")
         self.arm.set_enable(True)
         
         self.revolver_increment = self.zero_revolver()
@@ -48,7 +59,6 @@ class sorter(object):
         self.revolver.set_extended_position(goal)
         diff = 1000
         while not abs(diff) < 30:
-            self.revolver.set_extended_position(goal)
             diff = goal - self.revolver.get_extended_position()
         
     def __round_to_multiple(self, number, multiple):
@@ -92,14 +102,14 @@ class sorter(object):
         # print(balls_read)
         for i in range(sample):
             balls_read = balls_read + self.get_ball_color()
-        ball_color = collections.Counter(balls_read).most_common(1)[0][0]
+        ball = ball.get(collections.Counter(balls_read).most_common(1)[0][0])
         
         # print(ball_color)
-        if  ball_color == 'n':
+        if  ball_color == BALL_NONE:
             # print("none")            
             self.next_ball()
             
-        if ball_color == 'b':
+        if ball_color == BALL_BLACK:
             print("black")
             if not self.last_ball == ball_color:
                 self.set_arm(-1)
@@ -107,7 +117,7 @@ class sorter(object):
             # print("next ball")
             self.next_ball()
             
-        if ball_color == 'w':
+        if ball_color == BALL_WHITE:
             print("white")
             if not self.last_ball == ball_color:
                 self.set_arm(1)
