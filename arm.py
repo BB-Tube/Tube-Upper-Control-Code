@@ -15,19 +15,21 @@ class arm(object):
         self.motor.set_mode("Current-based_Position")
         self.motor.set_enable(True)
         
-        self.last_input = 0
-        
+        self.stall_iterator = 0
         self.check_stall_timer = waiter()
         self.check_stall_timer.wait(.1)
         self.got_stalled = False
-        self.last_input = 0
+        self.last_input = 'n'
+        self.last_last_input = 'n'
         self.backed_off = waiter()
         self.backed_off.wait(.1)
 
     def ball_input(self, ball):
         if self.last_input == ball:
+            print("no change")
             return
         else:
+            self.last_last_input = self.last_input
             self.last_input = ball
         goal = self.__goal(ball)
         self.move_to(goal)
@@ -36,19 +38,22 @@ class arm(object):
         self.motor.set_position_current(degrees, self.current_limit)
 
     def if_there(self, margin = 3):
+        if self.last_last_input == self.last_input:
+            return True
         if not self.backed_off.if_past(): # waiting for back off
             return False
         if self.got_stalled: # trigger restart
             self.got_stalled = False
             self.next_slot()
-        if self.__if_stalled(): # if stalled
+        self.stall_iterator += 1
+        if self.stall_iterator%10 == 0 and self.__if_stalled(): # if stalled
             self.got_stalled = True
             print("Stalled")
             self.__back_off(60)
             self.backed_off.wait(.5)
             return False
         at = self.motor.get_extended_position()
-        return abs(self.__goal() - at) < abs(margin)
+        return abs(self.__goal(self.last_input) - at) < abs(margin)
     
     def __back_off(self, back_off_degrees):
         degrees = back_off_degrees

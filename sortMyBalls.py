@@ -5,13 +5,13 @@ from datetime import datetime
 import serial
 from collections import Counter
 from revolver import revolver
+from arm import arm
 
 t = time.time()
 r = 45 # increment by
 flipRevolver = True
 
 last_ball = 'n'
-
 
 # BALL INFORMATION 
 BALL_NONE = 'n'
@@ -25,7 +25,7 @@ ball_print = {
 
 class sorter(object):
      
-    def __init__(self, revolver : revolver, arm : dynamixel, serialBoi : serial, samples = 3):
+    def __init__(self, revolver : revolver, arm : arm, serialBoi : serial, samples = 3):
         self.revolver = revolver
         self.revolver.set_current_limit(800)
         
@@ -33,11 +33,8 @@ class sorter(object):
         
         self.cereal = serialBoi
         
-        self.last_ball = 'n'
-        
         self.arm = arm
-        self.arm.set_mode("Position")
-        self.arm.set_enable(True)
+        self.arm.set_current_limit(300)
            
     def get_ball_color(self, samples=1):
         balls_read = ""
@@ -65,41 +62,25 @@ class sorter(object):
             if echo_message:
                 return echo_message
         return None
-
-    def set_arm(self, angle):
-        offset = 12
-        neutral = 181
-        goal = neutral + angle * offset
-        self.arm.set_position(goal)
-            
+      
     def update(self):
         if not self.revolver.if_there(margin=15):
+            return False
+        if not self.arm.if_there(margin=10):
             return False
         
         ball = self.get_ball_color(self.sample_size)
         print(ball_print[ball])
         
-        if self.last_ball == ball:
-            self.revolver.next_slot(overshoot=5)
-            return True
-        else: 
-            self.last_ball = ball
-        
-        if ball == BALL_NONE:
-            pass
-
-        if ball == BALL_BLACK:
-            self.set_arm(-1)
-            
-        if ball == BALL_WHITE:
-            self.set_arm(1)
+        self.arm.ball_input(ball)
         
         self.revolver.next_slot(overshoot=5)
         
         return True
 
 if __name__ == '__main__':
-    arm = dynamixel(ID = 3, op = 3)
+    arm_motor = dynamixel(ID = 3, op = 3)
+    arm = arm(arm_motor)
     revolver_motor = dynamixel(ID = 2, op = 4)
     revolver = revolver(revolver_motor,8,flip=True)
     ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
@@ -114,6 +95,6 @@ if __name__ == '__main__':
             iterator += 1
             delta = round(time.monotonic() - start,3)
             print(iterator, " time is ", delta)
-            if iterator == 30:
+            if iterator == 100:
                 break
     print("balls per second = ", round(iterator / delta, 2))
