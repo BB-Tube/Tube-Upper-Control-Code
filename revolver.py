@@ -17,7 +17,7 @@ class revolver(object):
         self.current_limit = current_Limit
         self.r = 360 / slots
         self.slot = self.__get_slot()
-        self.__goal()
+        self.move_to(self.__goal())
         
         self.check_stall_timer = waiter()
         self.check_stall_timer.wait(.1)
@@ -32,7 +32,10 @@ class revolver(object):
         if self.flip:
             over *= -1
         self.__increment()
-        self.motor.set_position_current(self.__goal() + over, self.current_limit)
+        self.move_to(self.__goal() + over)
+
+    def move_to(self, degrees):
+        self.motor.set_position_current(degrees, self.current_limit)
 
     def if_there(self, margin = 3):
         if not self.backed_off.if_past(): # waiting for back off
@@ -94,7 +97,17 @@ if __name__ == '__main__':
     motor = dynamixel(ID = 2, op = 4)
     r = revolver(motor, 8, flip=True)
     r.set_current_limit(800)
+    
+    iterator = 0
+    start = time.monotonic()
+    delta = 0
     while True:
-        if r.if_there(20):
-            r.next_slot(20)
-        
+        if r.if_there(10):
+            r.next_slot(10)
+            iterator += 1
+            delta = round(time.monotonic() - start,3)
+            print(iterator, " time is ", delta)
+            if iterator == 100:
+                break
+
+    print("balls per second = ", round(iterator / delta, 2))

@@ -3,9 +3,9 @@ from waiter import waiter
 import time
 from datetime import datetime
 import serial
-import collections
+from collections import Counter
+from revolver import revolver
 
-ser = serial.Serial('/dev/ttyACM1', 9600, timeout=1)
 t = time.time()
 r = 45 # increment by
 flipRevolver = True
@@ -25,46 +25,29 @@ ball_print = {
 
 class sorter(object):
      
-    def __init__(self, revolver : dynamixel, arm : dynamixel, revolver_count = 8):
+    def __init__(self, revolver : revolver, arm : dynamixel, serialBoi : serial, samples = 3):
         self.revolver = revolver
-        self.revolver.set_mode("Extended_Position")
-        self.revolver.set_enable(True)
-        # self.revolver.set_profile_velocity(6/8)
+        self.revolver.set_current_limit(800)
+        
+        self.sample_size = samples
+        
+        self.cereal = serialBoi
         
         self.last_ball = 'n'
         
         self.arm = arm
         self.arm.set_mode("Position")
         self.arm.set_enable(True)
-        
-        self.revolver_increment = self.zero_revolver()
-        revolver.set_extended_position(self.revolver_increment * r)
-        
-    def zero_revolver(self):
-        currPos = self.revolver.get_extended_position()
-        print("currPos              ", currPos)
-        print("r                    ",r)
-        ri = self.__round_to_multiple(currPos, r) / r
-        print("revolver increment:  ", ri)
-        goto = ri * r
-        print("goto                 ", goto)
-        return ri
-                  
-    def next_ball(self):
-        if flipRevolver:
-            self.revolver_increment += -1
-        else:
-            self.revolver_increment += 1
-        goal = self.revolver_increment * r 
-        self.revolver.set_extended_position(goal)
-        diff = 1000
-        while not abs(diff) < 30:
-            diff = goal - self.revolver.get_extended_position()
-        
-    def __round_to_multiple(self, number, multiple):
-        return multiple * round(number / multiple)
-    
-    def get_ball_color(self):
+           
+    def get_ball_color(self, samples=1):
+        balls_read = ""
+        for i in range(samples):
+            balls_read = balls_read + self.read_sensor()
+        ball = Counter(balls_read)
+        ball = max(ball, key=ball.get)
+        return ball
+           
+    def read_sensor(self):
         while(True):
             ball_color = self.__sendMessage('-')
             if ball_color is None:
@@ -77,8 +60,8 @@ class sorter(object):
         
         start_time = time.time()
         while time.time() - start_time < timeout:
-            ser.write(stringg.encode())
-            echo_message = ser.readline().decode(errors='ignore').strip()
+            self.cereal.write(stringg.encode())
+            echo_message = self.cereal.readline().decode(errors='ignore').strip()
             if echo_message:
                 return echo_message
         return None
@@ -92,47 +75,42 @@ class sorter(object):
         time.sleep(.01)
             
     def update(self):
-        # Within Target Threshhold ?
-        #   If revolver there +/- 30 -> read the color 3 times and use mode
-        #   Arm no restriction - timing should take same amount as arm
+        if not self.revolver.if_there(margin=15):
+            return False
         
-        # print("sample")
-        sample = 3
-        balls_read = ""
-        # print(balls_read)
-        for i in range(sample):
-            balls_read = balls_read + self.get_ball_color()
-        ball = ball.get(collections.Counter(balls_read).most_common(1)[0][0])
+        ball = self.get_ball_color(self.sample_size)
         
-        # print(ball_color)
-        if  ball_color == BALL_NONE:
-            # print("none")            
-            self.next_ball()
+        if ball == BALL_NONE:
+            pass
             
-        if ball_color == BALL_BLACK:
-            print("black")
-            if not self.last_ball == ball_color:
-                self.set_arm(-1)
-            self.last_ball = ball_color
-            # print("next ball")
-            self.next_ball()
+        if ball == BALL_BLACK:
+            print("Black")
+            self.set_arm(-1)
             
-        if ball_color == BALL_WHITE:
-            print("white")
-            if not self.last_ball == ball_color:
-                self.set_arm(1)
-            self.last_ball = ball_color
-            # print("next ball")
-            self.next_ball()
-
+        if ball == BALL_WHITE:
+            print("White")
+            self.set_arm(1)
+        
+        self.revolver.next_slot(overshoot=5)
+        
+        return True
 
 if __name__ == '__main__':
     arm = dynamixel(ID = 3, op = 3)
-    revolver = dynamixel(ID = 2, op = 4)
-    s = sorter(revolver, arm)
+    revolver_motor = dynamixel(ID = 2, op = 4)
+    revolver = revolver(revolver_motor,8,flip=True)
+    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+    s = sorter(revolver, arm, ser,samples=1)
  
     # s.next_ball()
     iterator = 0
+    start = time.monotonic()
+    delta = 0
     while True:
-        iterator += 1
-        s.update()
+        if (s.update()):
+            iterator += 1
+            delta = round(time.monotonic() - start,3)
+            print(iterator, " time is ", delta)
+            if iterator == 100:
+                break
+    print("balls per second = ", round(iterator / delta, 2))
