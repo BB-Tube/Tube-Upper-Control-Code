@@ -2,38 +2,36 @@ from dynamixel import dynamixel
 import time
 from waiter import waiter
 
-class revolver(object):
+ball_dict = {
+        'b' : 193,
+        'n' : 181,
+        'w' : 169
+    }
+
+class arm(object):
     def __init__(self, 
-                 motor : dynamixel, 
-                 slots : float, 
-                 current_Limit : float = 500, 
-                 offset : float = 0, 
-                 flip : bool = False):
+                motor : dynamixel):
         self.motor = motor
         self.motor.set_mode("Current-based_Position")
         self.motor.set_enable(True)
-        self.flip = flip
-        self.offset = offset # not absolute
-        self.current_limit = current_Limit
-        self.r = 360 / slots
-        self.slot = self.__get_slot()
-        self.move_to(self.__goal())
+        
+        self.last_input = 0
         
         self.check_stall_timer = waiter()
         self.check_stall_timer.wait(.1)
         self.got_stalled = False
-        self.last_position = 0
+        self.last_input = 0
         self.backed_off = waiter()
         self.backed_off.wait(.1)
-      
-    def next_slot(self, overshoot = 0):
-        self.slot = self.__get_slot()
-        over = abs(overshoot)
-        if self.flip:
-            over *= -1
-        self.__increment()
-        self.move_to(self.__goal() + over)
 
+    def ball_input(self, ball):
+        if self.last_input == ball:
+            return
+        else:
+            self.last_input = ball
+        goal = self.__goal(ball)
+        self.move_to(goal)
+        
     def move_to(self, degrees):
         self.motor.set_position_current(degrees, self.current_limit)
 
@@ -62,41 +60,20 @@ class revolver(object):
     def set_current_limit(self, milliamps):
         self.current_limit = milliamps
     
-    def __if_stalled(self, position_margin = 5, current_margin = 20):
+    def __if_stalled(self, current_margin = 20):
         if self.check_stall_timer.if_past():
             self.check_stall_timer.wait(.3)
             current_milliamp = self.motor.get_current()
             if (abs(current_milliamp) > (self.current_limit - current_margin)):
                 return True
-            # current_position = self.motor.get_extended_position()
-            # if (abs(self.last_position - current_position) < position_margin):
-            #     return True
-            # self.last_position = current_position
         return False
-     
-    def __increment(self):
-        if self.flip:
-            self.slot += -1
-        else:
-            self.slot += 1
-          
-    def __get_slot(self):
-        current_position = self.motor.get_extended_position() - self.offset
-        # print("Current Position     ", current_position)
-        # print("Amount to shift:     ", self.r)
-        slot = self.__round_to_multiple(current_position, self.r) / self.r
-        # print("Current Slot         ", slot)
-        return slot
             
-    def __goal(self):
-        return self.slot * self.r + self.offset
-            
-    def __round_to_multiple(self, number, multiple):
-        return multiple * round(number / multiple)
+    def __goal(self, ball):
+        return ball_dict[ball]
                   
 if __name__ == '__main__':
     motor = dynamixel(ID = 2, op = 4)
-    r = revolver(motor, 8, flip=True)
+    r = arm(motor)
     r.set_current_limit(800)
     
     iterator = 0

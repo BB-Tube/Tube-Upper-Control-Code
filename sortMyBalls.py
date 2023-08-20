@@ -71,24 +71,27 @@ class sorter(object):
         neutral = 181
         goal = neutral + angle * offset
         self.arm.set_position(goal)
-        diff = 10
-        time.sleep(.01)
             
     def update(self):
         if not self.revolver.if_there(margin=15):
             return False
         
         ball = self.get_ball_color(self.sample_size)
+        print(ball_print[ball])
+        
+        if self.last_ball == ball:
+            self.revolver.next_slot(overshoot=5)
+            return True
+        else: 
+            self.last_ball = ball
         
         if ball == BALL_NONE:
             pass
-            
+
         if ball == BALL_BLACK:
-            print("Black")
             self.set_arm(-1)
             
         if ball == BALL_WHITE:
-            print("White")
             self.set_arm(1)
         
         self.revolver.next_slot(overshoot=5)
@@ -111,6 +114,6 @@ if __name__ == '__main__':
             iterator += 1
             delta = round(time.monotonic() - start,3)
             print(iterator, " time is ", delta)
-            if iterator == 100:
+            if iterator == 30:
                 break
     print("balls per second = ", round(iterator / delta, 2))
