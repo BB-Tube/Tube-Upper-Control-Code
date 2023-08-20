@@ -69,7 +69,6 @@ class sorter(object):
         if not self.revolver.if_there(margin=15):
             return False
         if not self.arm.if_there(margin=10):
-            print("arm not there!!!!!!!!!!!!!!")
             return False
         
         ball = self.get_ball_color(self.sample_size)

@@ -28,7 +28,7 @@ class arm(object):
             self.last_last_input = self.last_input
             self.last_input = ball
             if self.last_last_input == ball:
-                print("no change")
+                # print("no change")
                 return
         goal = self.__goal(ball)
         self.move_to(goal)
@@ -38,7 +38,7 @@ class arm(object):
 
     def if_there(self, margin = 3):
         if self.last_last_input == self.last_input:
-            print("     did nothing")
+            # print("     did nothing")
             return True
         if not self.backed_off.if_past(): # waiting for back off
             return False
