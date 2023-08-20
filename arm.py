@@ -15,7 +15,6 @@ class arm(object):
         self.motor.set_mode("Current-based_Position")
         self.motor.set_enable(True)
         
-        self.stall_iterator = 0
         self.check_stall_timer = waiter()
         self.check_stall_timer.wait(.1)
         self.got_stalled = False
@@ -24,13 +23,13 @@ class arm(object):
         self.backed_off = waiter()
         self.backed_off.wait(.1)
 
-    def ball_input(self, ball):
-        if self.last_input == ball:
-            print("no change")
-            return
-        else:
+    def ball_input(self, ball, check_valid = True):
+        if check_valid:
             self.last_last_input = self.last_input
             self.last_input = ball
+            if self.last_last_input == ball:
+                print("no change")
+                return
         goal = self.__goal(ball)
         self.move_to(goal)
         
@@ -39,28 +38,26 @@ class arm(object):
 
     def if_there(self, margin = 3):
         if self.last_last_input == self.last_input:
+            print("     did nothing")
             return True
         if not self.backed_off.if_past(): # waiting for back off
             return False
         if self.got_stalled: # trigger restart
             self.got_stalled = False
-            self.next_slot()
-        self.stall_iterator += 1
-        if self.stall_iterator%10 == 0 and self.__if_stalled(): # if stalled
+            self.ball_input(self.last_input, check_valid=False)
+            return False
+        if self.__if_stalled(): # if stalled
             self.got_stalled = True
-            print("Stalled")
-            self.__back_off(60)
+            print("     Stalled!!!!!!!!!!!!!!!!!!")
+            self.__back_off()
             self.backed_off.wait(.5)
             return False
         at = self.motor.get_extended_position()
         return abs(self.__goal(self.last_input) - at) < abs(margin)
     
-    def __back_off(self, back_off_degrees):
-        degrees = back_off_degrees
-        if self.flip: degrees *= -1
-        current_position = self.motor.get_extended_position()
-        goto = current_position - degrees
-        self.motor.set_position_current(goto, self.current_limit)
+    def __back_off(self):
+        self.motor.set_position_current(self.__goal('n'), self.current_limit)
+        
     
     def set_current_limit(self, milliamps):
         self.current_limit = milliamps
