@@ -23,15 +23,12 @@ class arm(object):
         self.backed_off = waiter()
         self.backed_off.wait(.1)
 
-    def ball_input(self, ball, check_valid = True):
-        if check_valid:
-            self.last_last_input = self.last_input
-            self.last_input = ball
-            if self.last_last_input == ball:
-                # print("no change")
-                return
-        goal = self.__goal(ball)
-        self.move_to(goal)
+    def ball_input(self, ball):
+        if not ball == self.last_input:
+            goal = self.__goal(ball)
+            self.move_to(goal)
+        self.last_last_input = self.last_input
+        self.last_input = ball
         
     def move_to(self, degrees):
         self.motor.set_position_current(degrees, self.current_limit)
@@ -44,7 +41,7 @@ class arm(object):
             return False
         if self.got_stalled: # trigger restart
             self.got_stalled = False
-            self.ball_input(self.last_input, check_valid=False)
+            self.ball_input(self.last_input)
             return False
         if self.__if_stalled(): # if stalled
             self.got_stalled = True
