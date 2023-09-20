@@ -66,9 +66,9 @@ class sorter(object):
         return None
       
     def update(self):
-        if not self.revolver.if_there(margin=15):
+        if not self.revolver.if_there(margin=8):
             return False
-        if not self.arm.if_there(margin=10):
+        if not self.arm.if_there(margin=15):
             return False
         
         ball = self.get_ball_color(self.sample_size)
@@ -81,12 +81,24 @@ class sorter(object):
         return True
 
 if __name__ == '__main__':
-    arm_motor = dynamixel(ID = 3, op = 3)
+    elevator = dynamixel(ID = 20, op = 1)
+    elevator.set_enable(True)
+    
+    # print("C :  ", elevator.get_temp())
+
+
+    elevator.set_velocity(-240)
+
+    
+    arm_motor = dynamixel(ID = 15, op = 3)
     arm = arm(arm_motor)
-    revolver_motor = dynamixel(ID = 2, op = 4)
-    revolver = revolver(revolver_motor,8,flip=True)
+    revolver_motor = dynamixel(ID = 14, op = 4)
+    
+    revolver = revolver(revolver_motor,8,offset=0,flip=True)
     ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-    s = sorter(revolver, arm, ser,samples=1)
+    s = sorter(revolver, arm, ser,samples=3)
+ 
+    print(s.read_sensor())
  
     # s.next_ball()
     iterator = 0
@@ -97,6 +109,6 @@ if __name__ == '__main__':
             iterator += 1
             delta = round(time.monotonic() - start,3)
             print(iterator, " time is ", delta)
-            if iterator == 100:
-                break
+            # if iterator == 100:
+            #     break
     print("balls per second = ", round(iterator / delta, 2))

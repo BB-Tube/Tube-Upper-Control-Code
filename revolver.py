@@ -6,7 +6,7 @@ class revolver(object):
     def __init__(self, 
                  motor : dynamixel, 
                  slots : float, 
-                 current_Limit : float = 500, 
+                 current_Limit : float = 800, 
                  offset : float = 0, 
                  flip : bool = False):
         self.motor = motor
@@ -63,16 +63,19 @@ class revolver(object):
         self.current_limit = milliamps
     
     def __if_stalled(self, position_margin = 5, current_margin = 20):
+        current_peaked = False
+        position_unchanged = False
         if self.check_stall_timer.if_past():
             self.check_stall_timer.wait(.3)
             current_milliamp = self.motor.get_current()
             if (abs(current_milliamp) > (self.current_limit - current_margin)):
-                return True
-            # current_position = self.motor.get_extended_position()
-            # if (abs(self.last_position - current_position) < position_margin):
-            #     return True
-            # self.last_position = current_position
-        return False
+                current_peaked = True
+                print("Current draw :   ", current_milliamp, " mA")
+            current_position = self.motor.get_extended_position()
+            if (abs(self.last_position - current_position) < position_margin):
+                position_unchanged = True
+            self.last_position = current_position
+        return current_peaked and position_unchanged
      
     def __increment(self):
         if self.flip:
@@ -95,7 +98,7 @@ class revolver(object):
         return multiple * round(number / multiple)
                   
 if __name__ == '__main__':
-    motor = dynamixel(ID = 2, op = 4)
+    motor = dynamixel(ID = 14, op = 4)
     r = revolver(motor, 8, flip=True)
     r.set_current_limit(800)
     

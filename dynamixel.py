@@ -54,8 +54,8 @@ ADDR_PRESENT_TEMPERATURE    = 146
 MINIMUM_POSITION_VALUE      = 0         # Refer to the Minimum Position Limit of product eManual
 MAXIMUM_POSITION_VALUE      = 4095      # Refer to the Maximum Position Limit of product eManual
 TICK_PER_DEGREE             = 4096 / 360
-MINIMUM_VELOCITY_VALUE      = -260
-MAXIMUM_VELOCITY_VALUE      = 260
+MINIMUM_VELOCITY_VALUE      = -1624
+MAXIMUM_VELOCITY_VALUE      = 1624
 RPM_PER_TICK                = 0.229
 MINIMUM_CURRENT_VALUE       = -1188
 MAXIMUM_CURRENT_VALUE       = 1188
@@ -480,8 +480,8 @@ class dynamixel(object):
         print()
 
 if __name__  == '__main__':
-    id_to_test = 2
-    test_op = 4
+    id_to_test = 1
+    test_op = 1
     if test_op == 0:  # 0      # Test Current
         motor3 = dynamixel(ID = id_to_test, op = 0)
         # motor3.set_profile_acceleration(rpm_pm=50)
@@ -501,13 +501,14 @@ if __name__  == '__main__':
         # motor3.set_profile_acceleration(rpm_pm=50)
         motor3.set_profile_velocity(rpm=120)
         motor3.set_enable(True)
+        motor3.set_velocity(goal_velocity = -300)
         val = 50
         while True:
-            motor3.set_velocity(goal_velocity = val)
-            val *= -1
-            time.sleep(.1)
-            motor3.print()
-            time.sleep(2)  
+            print(motor3.get_current())
+            # val *= -1
+            # time.sleep(.1)
+            # motor3.print()
+            # time.sleep(2)  
                       
     if test_op == 3:  # 3      # Test Position
         motor3 = dynamixel(ID = id_to_test, op = "Position")

@@ -3,9 +3,9 @@ import time
 from waiter import waiter
 
 ball_dict = {
-        'b' : 193,
-        'n' : 181,
-        'w' : 169
+        'b' : 188,
+        'n' : 180,
+        'w' : 172
     }
 
 class arm(object):
@@ -55,7 +55,6 @@ class arm(object):
     def __back_off(self):
         self.motor.set_position_current(self.__goal('n'), self.current_limit)
         
-    
     def set_current_limit(self, milliamps):
         self.current_limit = milliamps
     
@@ -71,16 +70,30 @@ class arm(object):
         return ball_dict[ball]
                   
 if __name__ == '__main__':
-    motor = dynamixel(ID = 2, op = 4)
-    r = arm(motor)
-    r.set_current_limit(800)
+    motor = dynamixel(ID = 15, op = 4)
+    a = arm(motor)
+    a.set_current_limit(800)
     
     iterator = 0
     start = time.monotonic()
     delta = 0
+    
     while True:
-        if r.if_there(10):
-            r.next_slot(10)
+        print('b')
+        a.ball_input('b')
+        while not a.if_there():
+            time.sleep(.1)
+        time.sleep(1)
+        
+        print('w')
+        while not a.if_there():
+            time.sleep(.1)
+        a.ball_input('w')
+        time.sleep(1)
+    
+    while False:
+        if a.if_there(10):
+            a.next_slot(10)
             iterator += 1
             delta = round(time.monotonic() - start,3)
             print(iterator, " time is ", delta)
