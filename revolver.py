@@ -99,7 +99,7 @@ class revolver(object):
                   
 if __name__ == '__main__':
     motor = dynamixel(ID = 14, op = 4)
-    r = revolver(motor, 8, flip=True)
+    r = revolver(motor, 17, flip=True)
     r.set_current_limit(800)
     
     iterator = 0

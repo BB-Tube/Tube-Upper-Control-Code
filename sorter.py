@@ -85,11 +85,9 @@ if __name__ == '__main__':
     elevator.set_enable(True)
     
     # print("C :  ", elevator.get_temp())
-
-
+    
     elevator.set_velocity(-240)
 
-    
     arm_motor = dynamixel(ID = 15, op = 3)
     arm = arm(arm_motor)
     revolver_motor = dynamixel(ID = 14, op = 4)
