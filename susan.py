@@ -8,7 +8,7 @@ from collections import Counter
 import math
 
 class Default():
-    MTR_OFFSET = 2.4 / 12 * math.tau
+    MTR_OFFSET = 2.1 / 12 * math.tau
     NAME = "Susan"
     ASK_KEY = 's'
     PASS_KEY = '1'
