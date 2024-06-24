@@ -17,6 +17,14 @@ class Default():
 
 class Susan(Dynamixel):
      
+    @classmethod
+    def get_default(cls):
+        baud = 57600
+        port = "/dev/ttyUSB0"
+        ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        susan = Susan(id = 13, port=port, baudrate=baud, serialBoi = ser)
+        return susan
+     
     def __init__(self, 
                  id, port, baudrate, 
                  serialBoi : serial,
@@ -118,13 +126,8 @@ class Susan(Dynamixel):
         return abs(self.get_goal_position() - self.get_position())/math.tau * self.col_per_rotation
 
 if __name__ == '__main__':
-    baud = 57600
-    port = "/dev/ttyUSB0"
-    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-    susan = Susan(id = 13, port=port, baudrate=baud, serialBoi = ser)
-    susan.on()
+    susan = Susan.get_default()
     susan.indicate()
-    susan.on()
     while(True):
         # print("Column at : ", susan.get_column())
         number = float(input("Please enter a number: "))

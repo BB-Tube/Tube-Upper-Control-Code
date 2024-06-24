@@ -1,6 +1,6 @@
-from dynamixel import dynamixel
+from util_gyz.dynamixel import Dynamixel
 import time
-from waiter import waiter
+from util_gyz.util import waiter
 
 ball_dict = {
         'b' : 188,

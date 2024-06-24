@@ -1,6 +1,16 @@
 from abc import ABC, abstractmethod
 from .units import *
 
+# Enumeration for different communication protocols, probably for interfacing with devices.
+class Protoccol(Enum):
+    VIRTUAL = auto()
+    RS_485 = auto()
+    I2C = auto()
+    CAN = auto()
+    SPI = auto()
+    SERIAL = auto()
+    DYNAMIXEL = auto()
+
 class ComponentInterface(ABC):
     def __init__(self, name, units : Units = Units()):
         self.name = name

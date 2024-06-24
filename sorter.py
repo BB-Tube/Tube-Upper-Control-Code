@@ -1,5 +1,5 @@
-from dynamixel import dynamixel
-from waiter import waiter
+from util_gyz.dynamixel import Dynamixel
+from util_gyz.util import waiter
 import time
 from datetime import datetime
 import serial

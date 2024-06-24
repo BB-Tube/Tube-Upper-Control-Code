@@ -1,4 +1,5 @@
 from .util import *
+from .abstract_component import Protoccol
 from .abstract_motor import Motor, ValueOutOfRangeError, Mode
 from . import dynamixel_variables as dv
 import os
@@ -27,7 +28,7 @@ from dynamixel_sdk import * # Uses Dynamixel SDK library
 class Dynamixel(Motor): 
     def __init__(self, id, port, protocol_version = 2.0, baudrate = 57600, units = Units(), name = "DYNAMIXEL_MOTOR"):
         ### Motor
-        super().__init__(id, port, Protocol.SERIAL, units, name=name)
+        super().__init__(id, port, Protoccol.SERIAL, units, name=name)
         ### Address and Model Specific Info
         self.mv = dv
         ### Protoccol Specific
