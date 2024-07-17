@@ -2,111 +2,101 @@ from util_gyz.dynamixel import Dynamixel
 from util_gyz.util import waiter
 import time
 from datetime import datetime
-import serial
+
 from collections import Counter
-from revolver import revolver
-from arm import arm
+from enum import Enum, auto
 
-t = time.time()
-r = 45 # increment by
-flipRevolver = True
+from revolver import Revolver
+from arm import Arm
+from serial_microcontroller import SerialMicrocontroller
+from util import *
+import math
 
-last_ball = 'n'
+class SorterState(Enum):
+    READING = auto()
+    PREPPING_ARM = auto()
+    MOVING_REVOLVER = auto()
 
-# BALL INFORMATION 
-BALL_NONE = 'n'
-BALL_BLACK = 'b'
-BALL_WHITE = 'w'
-ball_print = {
-    BALL_NONE : "None",
-    BALL_BLACK : "Black",
-    BALL_WHITE : "White"
-}
-
-class sorter(object):
-     
-    def __init__(self, revolver : revolver, arm : arm, serialBoi : serial, samples = 3):
+class Sorter(object):
+    def __init__(self, 
+            revolver : Revolver, 
+            arm : Arm, 
+            serialBoi : SerialMicrocontroller, 
+            samples = 3):
+        
         self.revolver = revolver
-        self.revolver.set_current_limit(800)
+        self.arm = arm
+        self.microcontroller = serialBoi
         
         self.sample_size = samples
-        
-        self.cereal = serialBoi
-        
-        self.last_ball = 'n'
-        
-        self.arm = arm
-        self.arm.set_current_limit(300)
-           
-    def get_ball_color(self, samples=1):
-        balls_read = ""
-        for i in range(samples):
-            balls_read = balls_read + self.read_sensor()
-        ball = Counter(balls_read)
-        ball = max(ball, key=ball.get)
-        return ball
-           
-    def read_sensor(self):
-        while(True):
-            ball_color = self.__sendMessage('-')
-            if ball_color is None:
-                pass
-            else:
-                return ball_color
-        
-    def __sendMessage(self, stringg):
-        timeout = 0.01  # Timeout value in seconds
-        
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            self.cereal.write(stringg.encode())
-            echo_message = self.cereal.readline().decode(errors='ignore').strip()
-            if echo_message:
-                return echo_message
-        return None
+        self.state = SorterState.READING
+        self.on_off = True # On to start
+      
+    def on(self):
+        self.on_off = True
+        self.revolver.on()
+        self.arm.on()
+      
+    def off(self):
+        self.on_off = False
+        self.revolver.off()
+        self.arm.off()
       
     def update(self):
-        if not self.revolver.if_there(margin=8):
-            return False
-        if not self.arm.if_there(margin=15):
-            return False
+        if not self.on_off:
+            return None
         
-        ball = self.get_ball_color(self.sample_size)
-        print("     ", ball_print[ball])
+        self.revolver.update()
+        self.arm.update()        
         
-        self.arm.ball_input(ball)
+        revolver_not_ready = not self.revolver.get_state() == State.READY
+        arm_not_ready = not self.arm.get_state() == State.READY
         
-        self.revolver.next_slot(overshoot=5)
+        if revolver_not_ready or arm_not_ready:
+            return None
         
-        return True
+        # print()
+        # print("updating")
+        if self.state == SorterState.READING:
+            # print("READING")
+            color_reading = self.get_ball_color()
+            # print("Color Reading: ", color_reading)
+            self.arm.set_ball(color_reading)
+            self.state = SorterState.PREPPING_ARM
+        if self.state == SorterState.PREPPING_ARM:
+            # print("PREPPING_ARM")
+            if self.arm.get_state() == State.READY:
+                self.revolver.next_slot()
+                self.state = SorterState.MOVING_REVOLVER
+        if self.state == SorterState.MOVING_REVOLVER:
+            # print("MOVING_REVOLVER")
+            if self.revolver.get_state() == State.READY:
+                self.state = SorterState.READING
+            
+        
+    def get_ball_color(self, sample_count = 0):
+        balls_read = ""
+        count = sample_count
+        if sample_count == 0:
+            count = self.sample_size
+        for i in range(count):
+            balls_read = balls_read + self.microcontroller.get_color_sensor().value
+        ball = Counter(balls_read)
+        ball = max(ball, key=ball.get)
+        return ball_reverse_index(ball)
 
 if __name__ == '__main__':
-    elevator = dynamixel(ID = 20, op = 1)
-    elevator.set_enable(True)
+    baud = 57600
+    port = "/dev/ttyUSB0"
+    r = Revolver(14, port, baud, 8, flip=True,
+        current = 500, velocity= 0, offset=math.radians(15))
+    r.set_profile_acceleration(0)
+    a = Arm(15, port = port, baudrate = baud,
+        current = 400,
+        tolerance=math.radians(5))
+    sm = SerialMicrocontroller()
+    s = Sorter(r, a, sm)
     
-    # print("C :  ", elevator.get_temp())
-    
-    elevator.set_velocity(-240)
-
-    arm_motor = dynamixel(ID = 15, op = 3)
-    arm = arm(arm_motor)
-    revolver_motor = dynamixel(ID = 14, op = 4)
-    
-    revolver = revolver(revolver_motor,8,offset=0,flip=True)
-    ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-    s = sorter(revolver, arm, ser,samples=3)
- 
-    print(s.read_sensor())
- 
-    # s.next_ball()
-    iterator = 0
-    start = time.monotonic()
-    delta = 0
     while True:
-        if (s.update()):
-            iterator += 1
-            delta = round(time.monotonic() - start,3)
-            print(iterator, " time is ", delta)
-            # if iterator == 100:
-            #     break
-    print("balls per second = ", round(iterator / delta, 2))
+        # print(s.get_ball_color())
+        s.update()

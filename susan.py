@@ -3,58 +3,54 @@ from util_gyz.abstract_motor import *
 from util_gyz.util import waiter
 import time
 from datetime import datetime
-import serial
 from collections import Counter
 import math
+import atexit
+from serial_microcontroller import SerialMicrocontroller
 
 class Default():
-    MTR_OFFSET = 2.1 / 12 * math.tau
+    MTR_OFFSET = 2.2 / 12 * math.tau
     NAME = "Susan"
-    ASK_KEY = 's'
-    PASS_KEY = '1'
     COL_PER_ROTATION = 12
     COL_TOTAL = 96
+    CURRENT = 400 # mA
 
 class Susan(Dynamixel):
-     
     @classmethod
     def get_default(cls):
         baud = 57600
         port = "/dev/ttyUSB0"
-        ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+        ser = SerialMicrocontroller()
         susan = Susan(id = 13, port=port, baudrate=baud, serialBoi = ser)
         return susan
      
     def __init__(self, 
                  id, port, baudrate, 
-                 serialBoi : serial,
+                 serialBoi : SerialMicrocontroller,
                  motor_offset = Default.MTR_OFFSET,
                  name = Default.NAME,
-                 ask_key = Default.ASK_KEY,
-                 pass_key = Default.PASS_KEY,
                  col_per_rotation = Default.COL_PER_ROTATION,
                  col_total = Default.COL_TOTAL):
         super().__init__(id = id, port=port, baudrate=baudrate, name=name)
         self.cereal = serialBoi
-        self.ask_key = ask_key
-        self.pass_key = pass_key
         self.col_per_rotation = col_per_rotation
         self.col_total = col_total
         self.motor_offset = motor_offset
         self._setup_motor()
+        atexit.register(self.off)
                 
     def _setup_motor(self):
         self.off()
         self.set_mode(Mode.EXTENDED_POSITION_CURRENT)
         self.on()
-        self.set_goal_current(400)
+        self.set_goal_current(Default.CURRENT)
         
     def indicate(self):
         self.off()
         self.set_mode(Mode.VELOCITY)
         self.on()
         self.set_goal_velocity(math.tau)
-        while(self._read_sensor() == self.pass_key):
+        while self.cereal.get_susan_hall():
             time.sleep(.01)
         self.set_goal_velocity(0)
         while(self.get_velocity() > math.tau/16):
@@ -102,15 +98,7 @@ class Susan(Dynamixel):
           
     def at_column_absolute(self):
         return self.at_column() % self.col_total
-           
-    def _read_sensor(self):
-        while(True):
-            ball_color = self.__sendMessage(self.ask_key)
-            if ball_color is None:
-                pass
-            else:
-                return ball_color
-        
+    
     def __sendMessage(self, stringg):
         timeout = 0.01  # Timeout value in seconds
         

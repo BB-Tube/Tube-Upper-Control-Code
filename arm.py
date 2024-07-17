@@ -1,103 +1,105 @@
-from util_gyz.dynamixel import Dynamixel
+from dynamixel_unstall import Dynamixel_Unstall, Default_Dynamixel_Unstall
+from util import *
+import math
 import time
-from util_gyz.util import waiter
+import atexit
 
-ball_dict = {
-        'b' : 188,
-        'n' : 180,
-        'w' : 172
+class Default:
+    BALL_DICT = {
+        Ball.BLACK : math.radians(190),
+        Ball.NONE : math.radians(180),
+        Ball.WHITE : math.radians(170)
     }
+    POSITION_TOLERANCE = math.tau / 100 # radians
 
-class arm(object):
-    def __init__(self, 
-                motor : dynamixel):
-        self.motor = motor
-        self.motor.set_mode("Current-based_Position")
-        self.motor.set_enable(True)
+class Arm(Dynamixel_Unstall):
+    def __init__(self,
+                 id, port, baudrate,
+            name = "Arm",
+            tolerance = Default.POSITION_TOLERANCE,
+            ball_dict = Default.BALL_DICT,
+            backoff = Default_Dynamixel_Unstall.BACK_OFF_AMOUNT,
+            current : float = Default_Dynamixel_Unstall.JAMMED_CURRENT,
+            velocity : float = Default_Dynamixel_Unstall.SPEED,
+            current_tolerance = Default_Dynamixel_Unstall.CURRENT_TOLERANCE,
+            velocity_tolerance = math.tau/100,
+            check_Stall_time = Default_Dynamixel_Unstall.CHECK_STALL_TIME,
+            back_off_time = Default_Dynamixel_Unstall.BACK_OFF_TIME,
+            cooldown_time = Default_Dynamixel_Unstall.COOLDOWN_TIME):
+        super().__init__(
+            id = id, port=port, baudrate=baudrate, name=name,
+            backoff = backoff,
+            current = current,
+            velocity = velocity,
+            current_tolerance = current_tolerance,
+            velocity_tolerance = velocity_tolerance,
+            check_Stall_time = check_Stall_time,
+            back_off_time = back_off_time,
+            cooldown_time = cooldown_time)
+        self.set_profile_acceleration(0)
+        self.TOLERANCE = tolerance
+        self.BALL_DICT = ball_dict
         
-        self.check_stall_timer = waiter()
-        self.check_stall_timer.wait(.1)
-        self.got_stalled = False
-        self.last_input = 'n'
-        self.last_last_input = 'n'
-        self.backed_off = waiter()
-        self.backed_off.wait(.1)
-
-    def ball_input(self, ball):
-        if not ball == self.last_input:
-            goal = self.__goal(ball)
-            self.move_to(goal)
-        self.last_last_input = self.last_input
-        self.last_input = ball
+        self.goal_position = 0
         
-    def move_to(self, degrees):
-        self.motor.set_position_current(degrees, self.current_limit)
-
-    def if_there(self, margin = 3):
-        if self.last_last_input == self.last_input:
-            # print("     did nothing")
-            return True
-        if not self.backed_off.if_past(): # waiting for back off
-            return False
-        if self.got_stalled: # trigger restart
-            self.got_stalled = False
-            self.ball_input(self.last_input)
-            return False
-        if self.__if_stalled(): # if stalled
-            self.got_stalled = True
-            print("     Stalled!!!!!!!!!!!!!!!!!!")
-            self.__back_off()
-            self.backed_off.wait(.5)
-            return False
-        at = self.motor.get_extended_position()
-        return abs(self.__goal(self.last_input) - at) < abs(margin)
+        self.state = State.READY
+        self.ball = None
+        self.set_ball(Ball.NONE)
+        
+    def update(self):
+        ### Check if motor is jammed
+        super().update()
+        
+        not_stalled = super().get_state() == State.READY
+        close_enough = self.get_proximity() < self.TOLERANCE
+        
+        # print("Arm Proximity :      ", self.get_proximity())
+        # print("Arm Position :       ", self.get_position())
+        # print("Arm Goal Position :  ", self.get_goal_position())
+        # print("Arm Stalled :        ", super().get_state())
+        
+        if not_stalled and close_enough:
+            self.state = State.READY
+        else:
+            self.state = State.BUSY  
     
-    def __back_off(self):
-        self.motor.set_position_current(self.__goal('n'), self.current_limit)
-        
-    def set_current_limit(self, milliamps):
-        self.current_limit = milliamps
+    def get_state(self):
+        # print(self.state)
+        # print(self.get_current())
+        return self.state
     
-    def __if_stalled(self, current_margin = 20):
-        if self.check_stall_timer.if_past():
-            self.check_stall_timer.wait(.3)
-            current_milliamp = self.motor.get_current()
-            if (abs(current_milliamp) > (self.current_limit - current_margin)):
-                return True
-        return False
+    def set_ball(self, ball):
+        if not ball == self.ball:
+            self.ball = ball
+            self.set_goal_position(self.BALL_DICT[self.ball])
+            self.state = State.BUSY
             
-    def __goal(self, ball):
-        return ball_dict[ball]
-                  
-if __name__ == '__main__':
-    motor = dynamixel(ID = 15, op = 4)
-    a = arm(motor)
-    a.set_current_limit(800)
+    def get_proximity(self):
+        return abs(self.get_position() - self.goal_position)
     
-    iterator = 0
-    start = time.monotonic()
-    delta = 0
+    def set_goal_position(self, position):
+        self.goal_position = position
+        super().set_goal_position(position)
+        
+if __name__ == "__main__":
+    baud = 57600
+    port = "/dev/ttyUSB0"
+    a = Arm(15, port = port, baudrate = baud,
+            current = 400,
+            tolerance=math.radians(5))
     
     while True:
         print('b')
-        a.ball_input('b')
-        while not a.if_there():
-            time.sleep(.1)
-        time.sleep(1)
+        a.set_ball(Ball.BLACK)
+        while not a.get_state() == State.READY:
+            a.update()
         
-        print('w')
-        while not a.if_there():
-            time.sleep(.1)
-        a.ball_input('w')
-        time.sleep(1)
-    
-    while False:
-        if a.if_there(10):
-            a.next_slot(10)
-            iterator += 1
-            delta = round(time.monotonic() - start,3)
-            print(iterator, " time is ", delta)
-            if iterator == 100:
-                break
+        print('w')  
+        a.set_ball(Ball.WHITE)
+        while not a.get_state() == State.READY:
+            a.update()  
 
-    print("balls per second = ", round(iterator / delta, 2))
+        print('n')
+        a.set_ball(Ball.NONE)
+        while not a.get_state() == State.READY:
+            a.update()

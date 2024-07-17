@@ -2,11 +2,13 @@ from util_gyz.util import waiter
 from util_gyz.dynamixel import Dynamixel
 from util_gyz.abstract_motor import *
 import math
+from util import *
+import atexit
 
-class Default:
+class Default_Dynamixel_Unstall:
     JAMMED_CURRENT = 400 # ma
-    BACK_OFF_AMOUNT = math.tau / 6
-    SPEED = math.tau * 3,
+    BACK_OFF_AMOUNT = math.tau
+    SPEED = math.tau * 1
     
     CHECK_STALL_TIME = .01
     BACK_OFF_TIME = .5
@@ -15,24 +17,18 @@ class Default:
     CURRENT_TOLERANCE = 50 # ma
     VELOCITY_TOLERANCE = math.pi/10
     
-class State:
-    READY = 0
-    STALLED = 1
-    BACKING_OFF = 2
-    COOLDOWN = 3
-    
 class Dynamixel_Unstall(Dynamixel):
     def __init__(self, 
-                 id, port, baudrate, 
-                 name = "Unstalled_Motor",
-                 backoff = Default.BACK_OFF_AMOUNT,
-                 current : float = Default.JAMMED_CURRENT, 
-                 velocity : float = Default.SPEED,
-                 current_tolerance = Default.CURRENT_TOLERANCE,
-                 velocity_tolerance = Default.VELOCITY_TOLERANCE,
-                 check_Stall_time = Default.CHECK_STALL_TIME,
-                 back_off_time = Default.BACK_OFF_TIME,
-                 cooldown_time = Default.COOLDOWN_TIME): 
+            id, port, baudrate, 
+            name = "Unstalled_Motor",
+            backoff = Default_Dynamixel_Unstall.BACK_OFF_AMOUNT,
+            current : float = Default_Dynamixel_Unstall.JAMMED_CURRENT, 
+            velocity : float = Default_Dynamixel_Unstall.SPEED,
+            current_tolerance = Default_Dynamixel_Unstall.CURRENT_TOLERANCE,
+            velocity_tolerance = Default_Dynamixel_Unstall.VELOCITY_TOLERANCE,
+            check_Stall_time = Default_Dynamixel_Unstall.CHECK_STALL_TIME,
+            back_off_time = Default_Dynamixel_Unstall.BACK_OFF_TIME,
+            cooldown_time = Default_Dynamixel_Unstall.COOLDOWN_TIME): 
         ### Motor Setup
         super().__init__(id = id, port=port, baudrate=baudrate, name=name)
         
@@ -47,7 +43,7 @@ class Dynamixel_Unstall(Dynamixel):
         self.BACK_OFF_TIME = back_off_time
         self.COOLDOWN_TIME = cooldown_time
 
-        self.state = State.READY
+        self.unstaller_state = State.READY
 
         self._setup_motor()
         
@@ -56,7 +52,8 @@ class Dynamixel_Unstall(Dynamixel):
         self.cooldown_timer = waiter()
         
         self.last_goal_position = self.get_goal_position()
-            
+        atexit.register(self.off)
+        
     def _setup_motor(self):
         self.off()
         self.set_mode(Mode.POSITION)
@@ -66,49 +63,42 @@ class Dynamixel_Unstall(Dynamixel):
         self.set_profile_acceleration(1000)
         self.on()
         self.set_goal_position(self.get_position())
-        
-    def set_goal_position(self, position, ready_override = False, log = True):
-        if log:
-            self.last_goal_position = position
-        if ready_override or self.is_ready():
-            super().set_goal_position(position)
      
     def is_ready(self):
         ready = None
-        if self.state is State.READY:
+        if self.unstaller_state is State.READY:
             ready = True
         else:
             ready = False
         return ready
         
     def update(self):
-        if self.state == State.READY:
+        if self.unstaller_state == State.READY:
             stalled = False
             if self.check_stall_timer.if_past():
                 stalled = self.is_stalled()
                 self.check_stall_timer.wait(self.CHECK_STALL_TIME)
             if stalled:
-                self.state = State.STALLED
+                self.unstaller_state = StalledState.STALLED
                 
-        if self.state == State.STALLED:
+        if self.unstaller_state == StalledState.STALLED:
             self.unstall()
-            self.state = State.BACKING_OFF
+            self.unstaller_state = StalledState.BACKING_OFF
             self.backed_off_timer.wait(self.BACK_OFF_TIME)
             
-        if self.state == State.BACKING_OFF:
+        if self.unstaller_state == StalledState.BACKING_OFF:
             if self.backed_off_timer.if_past():
                 self.resume()
-                self.state = State.COOLDOWN 
+                self.unstaller_state = StalledState.COOLDOWN 
                 self.cooldown_timer.wait(self.COOLDOWN_TIME)       
                 
-        if self.state == State.COOLDOWN:
+        if self.unstaller_state == StalledState.COOLDOWN:
             if self.cooldown_timer.if_past():
                 if self.is_stalled():
-                    self.state = State.STALLED
+                    self.unstaller_state = StalledState.STALLED
                 else:
-                    self.state = State.READY
-                
-            
+                    self.unstaller_state = State.READY
+                          
     def is_stalled(self):
         # if current limit is reached
         current_limited = self.CURRENT_LIMIT - self.CURRENT_TOLERANCE < abs(self.get_current()) 
@@ -120,13 +110,23 @@ class Dynamixel_Unstall(Dynamixel):
     def unstall(self):
         sign_delta = math.copysign(1, self.get_current())
         backoff = -1 * sign_delta * self.BACKOFF
-        self.set_goal_position(
-            self.get_position() + backoff, 
+        Dynamixel_Unstall.set_goal_position(
+            self,
+            position = self.get_position() + backoff, 
             ready_override = True,
             log = False)
         
     def resume(self):
-        self.set_goal_position(self.last_goal_position, ready_override = True)
+        Dynamixel_Unstall.set_goal_position(self, self.last_goal_position, ready_override = True)
+    
+    def set_goal_position(self, position, ready_override = False, log = True):
+        if log:
+            self.last_goal_position = position
+        if ready_override or self.is_ready():
+            super().set_goal_position(position)
+    
+    def get_state(self):
+        return self.unstaller_state
     
 if __name__ == "__main__":
     DISPO_DRIVER = "Driver Dispo"
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     print(motor.get_model())
     
     w = waiter()
-    motor.set_goal_position(-2000)
+    motor.set_goal_position(-200)
     while(True):
         motor.update()
         # print(motor.is_ready())

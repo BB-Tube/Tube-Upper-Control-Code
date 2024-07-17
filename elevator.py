@@ -3,6 +3,7 @@ from util_gyz.abstract_motor import *
 from util_gyz.util import waiter
 import time 
 import math
+from dynamixel_cont_unstall import Dynamixel_Cont_Unstall
 
 class Default():
     ### ID typical is 20
@@ -51,16 +52,35 @@ class Elevator(Dynamixel):
         return self.get_current() > Default.JAMMED_CURRENT
 
 if __name__ == '__main__':
-    baud = 57600
-    port = "/dev/ttyUSB0"
-    vator = Elevator(id = 20, port=port, baudrate=baud)
-    vator.set_shutdown(0)
-    while True:
-        time.sleep(.5)
-        vator.go()
-        print("velocity : ", vator.get_velocity())
-        print("current :  ", vator.get_current())
-    vator.off()
+    # baud = 57600
+    # port = "/dev/ttyUSB0"
+    # vator = Elevator(id = 20, port=port, baudrate=baud)
+    # vator.set_shutdown(0)
+    # while True:
+    #     time.sleep(.5)
+    #     vator.go()
+    #     print("velocity : ", vator.get_velocity())
+    #     print("current :  ", vator.get_current())
+    # vator.off()
+    
+    DISPO_DRIVER = "Driver Elevator"
+    ELEVATOR_ID = 20
+    PORT = "/dev/ttyUSB0"
+    
+    motor = Dynamixel_Cont_Unstall(
+        id = ELEVATOR_ID, 
+        port = PORT, 
+        baudrate = 57600, 
+        anticlockwise = False,
+        backoff = math.tau,
+        current = 900,
+        velocity = math.tau * 3,
+        back_off_time = 2,
+        cooldown_time = .5,
+        velocity_tolerance = .05)
+    
+    while(True):
+        motor.update()
         
 
 

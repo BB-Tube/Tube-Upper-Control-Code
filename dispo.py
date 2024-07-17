@@ -5,11 +5,9 @@ import time
 import math
 from revolver import revolver
 from elevator import Elevator
+import atexit
 
 class Default():
-    BAUD = 57600
-    PORT = "/dev/ttyUSB0"
-    
     DISPO_DRIVER = "Driver Dispo"
     DISPO_ID = 16
     DISPO_SPEED = -math.tau * 3
@@ -23,11 +21,6 @@ class Default():
     BLACK_ID = 18
     BLACK_FLIP = False  
     BLACK_OFFSET = 0
-      
-    ASK_WHITE =         'e'
-    ASK_BLACK =         'n'
-    ANSWER_LOADED =     '0'
-    ANSWER_UNLOADED =   '1'
     
     JAMMED_CURRENT = 800 # ma
     
@@ -47,6 +40,7 @@ class Dispo(object):
         self.black_revolver = revolver(id_black, port, baudrate, name_black,
             6, flip = Default.BLACK_FLIP, offset = Default.BLACK_OFFSET)   
         self._setup_motor()
+        atexit.register(self.off)
         
     def on(self):
         for motor in (self.dispo, self.white_revolver, self.black_revolver):
@@ -69,10 +63,10 @@ if __name__ == "__main__":
     dispenser.dispo_drive()
     dispenser.on()
     
-    while(True):
-        ma = dispenser.dispo.get_current()
-        print("Current: ", ma)
-        time.sleep(1)
+    # while(True):
+    #     ma = dispenser.dispo.get_current()
+    #     print("Current: ", ma)
+    #     time.sleep(1)
     
     baud = 57600
     port = "/dev/ttyUSB0"
@@ -87,7 +81,7 @@ if __name__ == "__main__":
     # dispenser.off()
     # vator.off()
     
-    while False:
+    while True:
         # time.sleep(1)
         # print("White : ", dispenser.white_revolver.get_position())
         # print("Black : ", dispenser.black_revolver.get_position())

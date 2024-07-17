@@ -3,16 +3,23 @@ from util_gyz.abstract_motor import *
 from util_gyz.util import waiter
 import time 
 import math
+import atexit
 
 class Default():
+    BAUD = 57600
+    PORT = "/dev/ttyUSB0"
+    ID = 12
+    
     ### ID typical is 12
-    OPEN = 0
-    CLOSED = math.pi
-    MAX_CURRENT = 400 # ma
+    OPEN = math.tau * (.95)
+    CLOSED = math.tau * (1/2 - .1)
+    MAX_CURRENT = 200 # ma
 
 class Emptier(Dynamixel):
     def __init__(self, 
-                 id, port, baudrate,
+                 id = Default.ID, 
+                 port = Default.PORT, 
+                 baudrate = Default.BAUD,
                  name = "Emptier",
                  OPEN = Default.OPEN,
                  CLOSED = Default.CLOSED):
@@ -20,6 +27,7 @@ class Emptier(Dynamixel):
         self.OPEN_POSITION = OPEN
         self.CLOSED_POSITION = CLOSED
         self._setup_motor()
+        atexit.register(self.off)
         
     def _setup_motor(self):
         self.off()
@@ -34,13 +42,11 @@ class Emptier(Dynamixel):
         self.set_goal_position(self.CLOSED_POSITION)
 
 if __name__ == '__main__':
-    baud = 57600
-    port = "/dev/ttyUSB0"
-    susan = Emptier(id = 12, port=port, baudrate=baud)
+    emptier = Emptier()
     while(True):
-        susan.open()
+        emptier.open()
         time.sleep(1)
-        susan.close()
+        emptier.close()
         time.sleep(1)
         
 

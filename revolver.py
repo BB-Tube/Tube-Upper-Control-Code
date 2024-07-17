@@ -2,120 +2,154 @@ import time
 from util_gyz.dynamixel import Dynamixel
 from util_gyz.abstract_motor import * 
 from util_gyz.util import waiter
+from dynamixel_unstall import Dynamixel_Unstall, Default_Dynamixel_Unstall
+from util import *
+import atexit
 
 class Default():
     ### ID typical is 20]
-    JAMMED_CURRENT = 800 # ma
-    TOLERANCE = math.radians(3)
-    BACK_OFF_AMOUNT = math.tau / 6
+    POSITION_TOLERANCE = math.tau / 60 # radians
 
-class revolver(Dynamixel):
+class Revolver(Dynamixel_Unstall):
     def __init__(self, 
-                 id, port, baudrate, 
-                 name = "Revolver",
-                 slots : float = 8, 
-                 current_Limit : float = Default.JAMMED_CURRENT, 
-                 offset : float = 0, 
-                 flip : bool = False): 
-        super().__init__(id = id, port=port, baudrate=baudrate, name=name)
-        self._setup_motor()
+            id, port, baudrate, 
+            name = "Revolver",
+            slots : float = 8, 
+            offset : float = 0,
+            position_tolerance = Default.POSITION_TOLERANCE,
+            flip : bool = False,
+            backoff = math.tau/10,
+            current : float = Default_Dynamixel_Unstall.JAMMED_CURRENT, 
+            velocity : float = Default_Dynamixel_Unstall.SPEED,
+            current_tolerance = Default_Dynamixel_Unstall.CURRENT_TOLERANCE,
+            velocity_tolerance = Default_Dynamixel_Unstall.VELOCITY_TOLERANCE,
+            check_Stall_time = Default_Dynamixel_Unstall.CHECK_STALL_TIME,
+            back_off_time = Default_Dynamixel_Unstall.BACK_OFF_TIME,
+            cooldown_time = Default_Dynamixel_Unstall.COOLDOWN_TIME): 
+        super().__init__(
+            id = id, port=port, baudrate=baudrate, 
+            name=name,
+            backoff = backoff,
+            current = current,
+            velocity = velocity,
+            current_tolerance = current_tolerance,
+            velocity_tolerance = velocity_tolerance,
+            check_Stall_time = check_Stall_time,
+            back_off_time = back_off_time,
+            cooldown_time = cooldown_time)
+        self.set_profile_acceleration(0)
         self.flip = flip
         self.offset = offset # not absolute
-        self.current_limit = current_Limit
         self.r = math.tau / slots # amount turn per slot
-        self.slot = self.__get_slot()
-        self.set_goal_position(self.__goal())
         
-        self.check_stall_timer = waiter()
-        self.check_stall_timer.wait(.1)
-        self.got_stalled = False
+        self.slot = self.get_slot()
+        self.goal_position = None
+        Revolver.set_goal_position(self, self.__set_slot())
         self.last_position = 0
-        self.backed_off = waiter()
-        self.backed_off.wait(.1)
         
-    def _setup_motor(self):
-        self.off()
-        self.set_mode(Mode.EXTENDED_POSITION_CURRENT)
-        self.set_goal_current(self.current_limit)
-        self.on()
+        self.POSITION_TOLERANCE = position_tolerance
+        self.revolver_state = State.READY
       
     def next_slot(self, overshoot = 0):
-        self.slot = self.__get_slot()
+        return self.move_slot(forwards = True, overshoot = overshoot)
+    
+    def back_slot(self, overshoot = 0):
+        return self.move_slot(forwards = False, overshoot = overshoot)
+    
+    def move_slot(self,
+            overshoot = 0, 
+            forwards = True):
+        self.slot = self.get_slot()
+        
+        ## manage overshoot
         over = abs(overshoot)
         if self.flip:
             over *= -1
-        self.__increment()
-        self.set_goal_position(self.__goal() + over)
-
-    def if_there(self, margin = Default.TOLERANCE):
-        if not self.backed_off.if_past(): # waiting for back off
-            return False
-        if self.got_stalled: # trigger restart
-            self.got_stalled = False
-            self.next_slot()
-        if self.__if_stalled(): # if stalled
-            self.got_stalled = True
-            print("Stalled")
-            self.__back_off(Default.BACK_OFF_AMOUNT)
-            self.backed_off.wait(.5)
-            return False
-        at = self.get_position()
-        return abs(self.__goal() - at) < abs(margin)
-    
-    def __back_off(self, back_off):
-        back_off_radians = back_off
-        if self.flip: back_off_radians *= -1
-        goto = self.get_position() - back_off_radians
-        self.set_goal_position(goto)
-    
-    def __if_stalled(self, position_margin = 5, current_margin = 20):
-        current_peaked = False
-        position_unchanged = False
-        if self.check_stall_timer.if_past():
-            self.check_stall_timer.wait(.3)
-            current_milliamp = self.get_current()
-            if (abs(current_milliamp) > (self.current_limit - current_margin)):
-                current_peaked = True
-                print("Current draw :   ", current_milliamp, " mA")
-            current_position = self.get_position()
-            if (abs(self.last_position - current_position) < position_margin):
-                position_unchanged = True
-            self.last_position = current_position
-        return current_peaked and position_unchanged
+            
+        ## manage case of back vs forwards
+        if forwards:
+            self.__increment()        
+            Revolver.set_goal_position(self, self.__set_slot() + over)
+        else:
+            self.__decrement()
+            Revolver.set_goal_position(self, self.__set_slot() - over)
+            
+    def set_goal_position(self, position):
+        self.goal_position = position
+        super().set_goal_position(position)
      
     def __increment(self):
         if self.flip:
             self.slot += -1
         else:
             self.slot += 1
-          
-    def __get_slot(self):
+    
+    def __decrement(self):
+        if not self.flip:
+            self.slot += -1
+        else:
+            self.slot += 1
+     
+    def get_slot(self):
+        """
+            Returns slot index nearest from current motor position
+        """        
+        def __round_to_multiple(number, multiple):
+            return multiple * round(number / multiple)
+        
         current_position = self.get_position() - self.offset
-        slot = self.__round_to_multiple(current_position, self.r) / self.r
+        slot = __round_to_multiple(current_position, self.r) / self.r
         return slot
-            
-    def __goal(self):
+    
+    def __set_slot(self):
+        """
+            returns motor goal position for the motor from self.slot
+        """
         return self.slot * self.r + self.offset
-            
-    def __round_to_multiple(self, number, multiple):
-        return multiple * round(number / multiple)
-                  
+
+    def update(self):
+        ### Check if motor is jammed
+        super().update()
+        
+        not_stalled = super().get_state() == State.READY
+        close_enough = self.check_proximity()
+        
+        if not_stalled and close_enough:
+            self.revolver_state = State.READY
+        else:
+            self.revolver_state = State.BUSY
+    
+    def get_state(self):
+        return self.revolver_state
+        
+    def check_proximity(self):
+        return self.get_proximity() < self.POSITION_TOLERANCE
+        
+    def get_proximity(self):
+        return abs(self.get_position() - self.goal_position)
+        
 if __name__ == '__main__':
     baud = 57600
     port = "/dev/ttyUSB0"
-    r = revolver(14, port, baud, 8, flip=True)
-    r.set_goal_current(800)
+    # d = Dynamixel(14, port, baud)
+    # print(d.get_model())
+    r = Revolver(14, port, baud, 8, flip=True,
+        current = 500, velocity= 0, offset=math.radians(15))
     
     iterator = 0
     start = time.monotonic()
     delta = 0
     while True:
-        if r.if_there(10):
-            r.next_slot(math.radians(10))
+        r.update()
+        
+        if r.get_state() == State.READY:
+            r.next_slot()
             iterator += 1
             delta = round(time.monotonic() - start,3)
             print(iterator, " time is ", delta)
             if iterator == 100:
                 break
 
-    print("balls per second = ", round(iterator / delta, 2))
+    time.sleep(10)
+
+    # print("balls per second = ", round(iterator / delta, 2))
