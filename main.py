@@ -14,7 +14,7 @@ from susan import Susan
 ### Variables
 BAUD_MICROCONTROLLER = 9600
 PORT_MICROCONTROLLER = "/dev/ttyACM0"
-BAUD_DYNAMIXELS = 57600
+BAUD_DYNAMIXELS = 1000000
 PORT_DYNAMIXELS = "/dev/ttyUSB0"
 ID_EMPTIER = 12
 ID_SUSAN = 13
@@ -54,19 +54,19 @@ elevator = Dynamixel_Cont_Unstall(
     baudrate = BAUD_DYNAMIXELS, 
     anticlockwise = False,
     backoff = math.tau,
-    current = 900,
+    current = 1000,
     velocity = math.tau * 3,
     back_off_time = 2,
     cooldown_time = .5,
     velocity_tolerance = .05)
 ## Susan
-# susan = Susan(
-#     id = ID_SUSAN,
-#     port = PORT_DYNAMIXELS,
-#     baudrate= BAUD_DYNAMIXELS,  
-#     serialBoi = sm,
-#     motor_offset= math.tau % 2.2/12)
-## Dispenser
+susan = Susan(
+    id = ID_SUSAN,
+    port = PORT_DYNAMIXELS,
+    baudrate= BAUD_DYNAMIXELS,  
+    serialBoi = sm,
+    motor_offset= math.tau * 6/12)
+# Dispenser
 # Driver
 dispo_driver = Dynamixel_Cont_Unstall(
     id = ID_DISPO_INSERTER, 
@@ -84,7 +84,7 @@ revolver_black = Revolver(
     ID_DISPO_BLACK, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
     slots = 6, flip=False, current = 300, velocity= math.tau,
     position_tolerance=math.radians(6), 
-    offset=math.radians(12))
+    offset=math.radians(42))
 # Revolver White
 revolver_white = Revolver(
     ID_DISPO_WHITE, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
@@ -143,8 +143,7 @@ while(False):
 ## Sorter
 while False:
     sorter.update()
-
-### Elevate & Sorter & Dispense
+### Elevate & Sorter
 if False:
     emptier.open()
         
@@ -152,17 +151,40 @@ if False:
         sorter.update()
         elevator.update()
         # time.sleep()
+### Empty Columns
+if False:
+    # susan.indicate()
+    susan.off()
+    emptier.open()
+    w = Waiter()
+    time_to_empty = 15
+    for i in range(96):
+        w.wait(time_to_empty)
+        while(not w.if_past()):
+            elevator.update()
+            sorter.update()
+        # susan.go_to_column(i)
+        
 
-### Elevate & Sorter & Dispense    
-if True:    
-    white_black_alternator = True
+### Elevate & Sorter & Dispense 
+if False: 
+    increment = 0
+    up_to = 32
+    susan.off()
+    
+    emptier.open()
+    time.sleep(1.5)
+    # emptier.close()
+    
+    white_black_alternator = False
     added_ball_state = None
     while True:
         sorter.update()
         elevator.update()
+        # time.sleep(.5)
         dispo.update()
         if dispo.get_state() == State.READY:
-            dispo.print_states()
+            # dispo.print_states()
             added_ball_state = False
             if white_black_alternator:
                 added_ball = dispo.add_white()
@@ -171,5 +193,48 @@ if True:
                 added_ball = dispo.add_black()
                 print("Add Black : ", added_ball)
             if added_ball:
+                increment += 1
+                if increment >= up_to:
+                    emptier.open()
+                    # time.sleep(1)
+                    # emptier.close()
+                    increment = 0
                 white_black_alternator = not white_black_alternator
-                print(white_black_alternator)
+                white_black_alternator = False
+                
+### Elevate & Sorter & Dispense 
+if True: 
+    increment = 0
+    up_to = 32
+    susan.go_to_column_nearest(90)
+    susan.off()
+    
+    emptier.open()
+    time.sleep(1.5)
+    emptier.close()
+    
+    white_black_alternator = True
+    added_ball_state = None
+    while True:
+        sorter.update()
+        elevator.update()
+        # time.sleep(.5)
+        dispo.update()
+        if dispo.get_state() == State.READY:
+            # dispo.print_states()
+            added_ball_state = False
+            if white_black_alternator:
+                added_ball = dispo.add_white()
+                print("Add White : ", added_ball)
+            else:
+                added_ball = dispo.add_black()
+                print("Add Black : ", added_ball)
+            if added_ball:
+                increment += 1
+                if increment >= up_to:
+                    # susan.go_to_column(round(susan.at_column()) + 1)
+                    emptier.open()
+                    time.sleep(1)
+                    emptier.close()
+                    increment = 0
+                white_black_alternator = False

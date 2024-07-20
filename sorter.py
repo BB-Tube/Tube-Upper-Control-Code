@@ -58,18 +58,18 @@ class Sorter(object):
         # print()
         # print("updating")
         if self.state == SorterState.READING:
-            # print("READING")
+            print("READING")
             color_reading = self.get_ball_color()
-            # print("Color Reading: ", color_reading)
+            print("Color Reading: ", color_reading)
             self.arm.set_ball(color_reading)
             self.state = SorterState.PREPPING_ARM
         if self.state == SorterState.PREPPING_ARM:
-            # print("PREPPING_ARM")
+            print("PREPPING_ARM")
             if self.arm.get_state() == State.READY:
                 self.revolver.next_slot()
                 self.state = SorterState.MOVING_REVOLVER
         if self.state == SorterState.MOVING_REVOLVER:
-            # print("MOVING_REVOLVER")
+            print("MOVING_REVOLVER")
             if self.revolver.get_state() == State.READY:
                 self.state = SorterState.READING
             
@@ -80,20 +80,22 @@ class Sorter(object):
         if sample_count == 0:
             count = self.sample_size
         for i in range(count):
-            balls_read = balls_read + self.microcontroller.get_color_sensor().value
+            reading = self.microcontroller.get_color_sensor().value
+            # print(reading)
+            balls_read = balls_read + reading
         ball = Counter(balls_read)
         ball = max(ball, key=ball.get)
         return ball_reverse_index(ball)
 
 if __name__ == '__main__':
-    baud = 57600
+    baud = 1000000
     port = "/dev/ttyUSB0"
-    r = Revolver(14, port, baud, 8, flip=True,
+    r = Revolver(14, port = port, baudrate = baud, 
+        slots = 8, flip=True,
         current = 500, velocity= 0, offset=math.radians(15))
     r.set_profile_acceleration(0)
     a = Arm(15, port = port, baudrate = baud,
-        current = 400,
-        tolerance=math.radians(5))
+        current = 400, tolerance=math.radians(5))
     sm = SerialMicrocontroller()
     s = Sorter(r, a, sm)
     

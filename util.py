@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import time
 
 class State(Enum):
     READY = auto()
@@ -25,3 +26,17 @@ def ball_reverse_index(value):
     # print(type(looked_up))
     # print(looked_up)
     return looked_up
+
+class Waiter:
+    def __init__(self):
+        self.now = time.time()
+        self.till = self.now
+        
+    def record_now(self):
+        self.now = time.time()
+        
+    def wait(self, seconds):
+        self.till = time.time() + seconds
+        
+    def if_past(self) -> bool:
+        return (time.time() > self.till)

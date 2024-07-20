@@ -10,9 +10,9 @@ class Default_Dynamixel_Unstall:
     BACK_OFF_AMOUNT = math.tau
     SPEED = math.tau * 1
     
-    CHECK_STALL_TIME = .01
+    CHECK_STALL_TIME = .1
     BACK_OFF_TIME = .5
-    COOLDOWN_TIME = .15
+    COOLDOWN_TIME = .1
     
     CURRENT_TOLERANCE = 50 # ma
     VELOCITY_TOLERANCE = math.pi/10

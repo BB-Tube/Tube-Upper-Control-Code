@@ -18,10 +18,10 @@ class Default():
 class Susan(Dynamixel):
     @classmethod
     def get_default(cls):
-        baud = 57600
+        baud = 1000000
         port = "/dev/ttyUSB0"
         ser = SerialMicrocontroller()
-        susan = Susan(id = 13, port=port, baudrate=baud, serialBoi = ser)
+        susan = Susan(id = 13, motor_offset= math.tau * 2/12, port=port, baudrate=baud, serialBoi = ser)
         return susan
      
     def __init__(self, 

@@ -6,7 +6,7 @@ import math
 import atexit
 
 class Default():
-    BAUD = 57600
+    BAUD = 1000000
     PORT = "/dev/ttyUSB0"
     ID = 12
     
