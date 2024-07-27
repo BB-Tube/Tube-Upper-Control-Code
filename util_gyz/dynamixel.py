@@ -85,6 +85,9 @@ class Dynamixel(Motor):
             getch()
             quit()
             
+    def reboot(self):
+        result, error = self.packet_handler.reboot(self.port_handler, self.id)
+            
     def _read_address(self, address_enum, signed = False): 
         read = self._read(self.mv.get_bytes(address_enum), address_enum.value)
         # Middle 

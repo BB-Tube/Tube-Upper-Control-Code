@@ -65,7 +65,7 @@ susan = Susan(
     port = PORT_DYNAMIXELS,
     baudrate= BAUD_DYNAMIXELS,  
     serialBoi = sm,
-    motor_offset= math.tau * 6/12)
+    motor_offset= math.tau * .25/12)
 # Dispenser
 # Driver
 dispo_driver = Dynamixel_Cont_Unstall(
@@ -98,6 +98,13 @@ dispo = Dispenser(
     dispo_driver=dispo_driver,
     microcontroller=sm)
 
+w = Waiter()
+
+def wait_sort_elevate(wait_time):
+    w.wait(wait_time)
+    while not w.if_past():
+        sorter.update()
+        elevator.update()
 
 #### Example
 
@@ -156,32 +163,58 @@ if False:
     # susan.indicate()
     susan.off()
     emptier.open()
-    w = Waiter()
-    time_to_empty = 15
-    for i in range(96):
-        w.wait(time_to_empty)
-        while(not w.if_past()):
-            elevator.update()
-            sorter.update()
+    while True:
+        elevator.update()
+        sorter.update()
         # susan.go_to_column(i)
         
+### Elevate & Sorter & Empty 
+if True: 
+    emptier.close()
+    # print(susan.get_shutdown())
+    # susan.reboot()
+    susan.indicate()
+    susan.go_to_column_nearest(0)
+    while susan.get_dist_to_goal() > .5:
+        time.sleep(.001)
+    time.sleep(3)
+    emptier.open()
+    w = Waiter()
+    w.wait(10)
+    
+    susan.off()
+    while True:
+        sorter.update()
+        elevator.update()
+        if w.if_past():
+            if round(susan.at_column()) == 95:
+                break
+            print(susan.at_column())
+            susan.go_to_column_nearest((round(susan.at_column()+1%96)))
+            w.wait(10)
+
 
 ### Elevate & Sorter & Dispense 
 if False: 
     increment = 0
     up_to = 32
-    susan.off()
+    emptier.close()
+    time.sleep(1)
+    susan.indicate()
+    susan.go_to_column_nearest(0)
     
+    time.sleep(2)
     emptier.open()
-    time.sleep(1.5)
-    # emptier.close()
+    time.sleep(2)
+    emptier.close()
     
     white_black_alternator = False
     added_ball_state = None
+    added_ball = False
+
     while True:
         sorter.update()
         elevator.update()
-        # time.sleep(.5)
         dispo.update()
         if dispo.get_state() == State.READY:
             # dispo.print_states()
@@ -194,16 +227,22 @@ if False:
                 print("Add Black : ", added_ball)
             if added_ball:
                 increment += 1
-                if increment >= up_to:
-                    emptier.open()
-                    # time.sleep(1)
-                    # emptier.close()
-                    increment = 0
                 white_black_alternator = not white_black_alternator
                 white_black_alternator = False
+            if increment >= up_to:
+                wait_sort_elevate(1.5)
+                if round(susan.at_column()) == 95:
+                    break
+                susan.go_to_column(round(susan.at_column()) + 1)
+                wait_sort_elevate(1.5)
+                emptier.open()
+                wait_sort_elevate(2)
+                emptier.close()
+                increment = 0
+                
                 
 ### Elevate & Sorter & Dispense 
-if True: 
+if False: 
     increment = 0
     up_to = 32
     susan.go_to_column_nearest(90)

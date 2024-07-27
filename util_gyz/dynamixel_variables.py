@@ -324,7 +324,8 @@ default_parameters = {
         Data.UNIT : Unit_Dynamixel.PWM_SLOPE
     },
     Address.SHUTDOWN: {
-        Data.ACCESS : Access.READ
+        Data.ACCESS : Access.READ,
+        Data.UNIT : Unit_Dynamixel.UNITLESS
         },
     
     ### RAM Area

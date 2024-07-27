@@ -13,7 +13,7 @@ class Default():
     NAME = "Susan"
     COL_PER_ROTATION = 12
     COL_TOTAL = 96
-    CURRENT = 400 # mA
+    CURRENT = 600 # mA
 
 class Susan(Dynamixel):
     @classmethod
@@ -50,7 +50,7 @@ class Susan(Dynamixel):
         self.set_mode(Mode.VELOCITY)
         self.on()
         self.set_goal_velocity(math.tau)
-        while self.cereal.get_susan_hall():
+        while not self.cereal.get_susan_hall():
             time.sleep(.01)
         self.set_goal_velocity(0)
         while(self.get_velocity() > math.tau/16):
@@ -60,6 +60,7 @@ class Susan(Dynamixel):
         self.set_mode(Mode.EXTENDED_POSITION_CURRENT)
         self._set_goal_position(0)
         self.on()
+        print("susan indicated")
     
     def _set_goal_position(self, angle):
         self.set_goal_position(angle * (self.col_total / self.col_per_rotation) + self.motor_offset)

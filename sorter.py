@@ -58,18 +58,18 @@ class Sorter(object):
         # print()
         # print("updating")
         if self.state == SorterState.READING:
-            print("READING")
+            # print("READING")
             color_reading = self.get_ball_color()
-            print("Color Reading: ", color_reading)
+            # print("Color Reading: ", color_reading)
             self.arm.set_ball(color_reading)
             self.state = SorterState.PREPPING_ARM
         if self.state == SorterState.PREPPING_ARM:
-            print("PREPPING_ARM")
+            # print("PREPPING_ARM")
             if self.arm.get_state() == State.READY:
                 self.revolver.next_slot()
                 self.state = SorterState.MOVING_REVOLVER
         if self.state == SorterState.MOVING_REVOLVER:
-            print("MOVING_REVOLVER")
+            # print("MOVING_REVOLVER")
             if self.revolver.get_state() == State.READY:
                 self.state = SorterState.READING
             

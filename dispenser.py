@@ -159,7 +159,7 @@ class Dispenser(object):
 if __name__ == "__main__":
     BAUD_MICROCONTROLLER = 9600
     PORT_MICROCONTROLLER = "/dev/ttyACM0"
-    BAUD_DYNAMIXELS = 57600
+    BAUD_DYNAMIXELS = 1000000
     PORT_DYNAMIXELS = "/dev/ttyUSB0"
     ID_DISPO_INSERTER = 16
     ID_DISPO_WHITE = 17
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         
     white_black_alternator = True
     added_ball_state = None
-    while True:
+    while False:
         dispo.update()
         if dispo.get_state() == State.READY:
             dispo.print_states()
@@ -207,3 +207,4 @@ if __name__ == "__main__":
                 added_ball = print("Add Black : ", dispo.add_black())
             if added_ball:
                 white_black_alternator = not white_black_alternator
+    dispo_driver.off()

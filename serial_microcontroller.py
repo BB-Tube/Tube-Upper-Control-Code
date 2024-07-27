@@ -14,6 +14,8 @@ class Default():
     ASK_BLACK =         'n'
     ANSWER_LOADED =     '1'
     ANSWER_UNLOADED =   '0'
+    SORTER_LIGHT_OFF_KEY = 'l'
+    SORTER_LIGHT_ON_KEY = 'k'
 
 class SerialMicrocontroller(object):
     _instance = None
@@ -45,6 +47,12 @@ class SerialMicrocontroller(object):
                 pass
             else:
                 return reading
+            
+    def sorter_light_on(self):
+        self.__sendMessage(Default.SORTER_LIGHT_ON_KEY)
+
+    def sorter_light_off(self):
+        self.__sendMessage(Default.SORTER_LIGHT_OFF_KEY)
 
     def get_color_sensor(self):        
         return ball_reverse_index(self.read_sensor(Default.COLOR_SENSOR_ASK_KEY))
@@ -72,9 +80,15 @@ class SerialMicrocontroller(object):
 
 if __name__ == "__main__":
     serial = SerialMicrocontroller()
+    light_state = False
     while(True):
         print()
         time.sleep(0.2)
+        light_state = not light_state
+        if light_state:
+            serial.sorter_light_on()
+        else:
+            serial.sorter_light_on()
         print(serial.get_color_sensor())
         print(serial.get_susan_hall())
         print("White : ", serial.get_white_dispo_sensor())
