@@ -11,6 +11,7 @@ from arm import Arm
 from serial_microcontroller import SerialMicrocontroller
 from util import *
 import math
+from color_sensor import ColorSensor
 
 class SorterState(Enum):
     READING = auto()
@@ -25,12 +26,17 @@ class Sorter(object):
             samples = 3):
         
         self.revolver = revolver
+        self.revolver.set_profile_acceleration(1000)
+        self.revolver.set_profile_velocity(math.tau*2)
         self.arm = arm
         self.microcontroller = serialBoi
+        self.colorsensor = ColorSensor()
         
         self.sample_size = samples
         self.state = SorterState.READING
         self.on_off = True # On to start
+
+        self.store = True
       
     def on(self):
         self.on_off = True
@@ -57,24 +63,38 @@ class Sorter(object):
         
         # print()
         # print("updating")
+        # time.sleep(1)
         if self.state == SorterState.READING:
             # print("READING")
-            color_reading = self.get_ball_color()
-            # print("Color Reading: ", color_reading)
+            color_reading = self.get_ball_color_camera()
+            # if self.store:
+            #     color_reading = Ball.BLACK
+            #     self.store = False
+            # else:
+            #     color_reading = Ball.BLACK
+            #     self.store = False
+            print("Color Reading: ", color_reading)
             self.arm.set_ball(color_reading)
+            self.arm.update()
             self.state = SorterState.PREPPING_ARM
         if self.state == SorterState.PREPPING_ARM:
             # print("PREPPING_ARM")
             if self.arm.get_state() == State.READY:
+                print("ARM READY")
                 self.revolver.next_slot()
                 self.state = SorterState.MOVING_REVOLVER
+            else:
+                print("ARM BUSY")
         if self.state == SorterState.MOVING_REVOLVER:
             # print("MOVING_REVOLVER")
             if self.revolver.get_state() == State.READY:
                 self.state = SorterState.READING
+                print("REVOLVER READY")
+            else:
+                print("REVOLVER BUSY")
             
         
-    def get_ball_color(self, sample_count = 0):
+    def get_ball_color_sensor(self, sample_count = 0):
         balls_read = ""
         count = sample_count
         if sample_count == 0:
@@ -86,6 +106,13 @@ class Sorter(object):
         ball = Counter(balls_read)
         ball = max(ball, key=ball.get)
         return ball_reverse_index(ball)
+
+    def get_ball_color_camera(self):
+        # time.sleep(.1)
+        ball_color = self.colorsensor.get_ball_color()
+        # time.sleep(.1)
+        # print("ball_color: ", ball_color)
+        return ball_color
 
 if __name__ == '__main__':
     baud = 1000000

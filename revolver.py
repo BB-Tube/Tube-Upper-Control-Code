@@ -8,7 +8,7 @@ import atexit
 
 class Default():
     ### ID typical is 20]
-    POSITION_TOLERANCE = math.tau / 60 # radians
+    POSITION_TOLERANCE = math.radians(15) # radians
 
 class Revolver(Dynamixel_Unstall):
     def __init__(self, 
@@ -51,9 +51,11 @@ class Revolver(Dynamixel_Unstall):
         self.revolver_state = State.READY
       
     def next_slot(self, overshoot = 0):
+        self.revolver_state = State.BUSY
         return self.move_slot(forwards = True, overshoot = overshoot)
     
     def back_slot(self, overshoot = 0):
+        self.revolver_state = State.BUSY
         return self.move_slot(forwards = False, overshoot = overshoot)
     
     def move_slot(self,
@@ -113,8 +115,10 @@ class Revolver(Dynamixel_Unstall):
         
         not_stalled = super().get_state() == State.READY
         close_enough = self.check_proximity()
+        stopped = self.check_speed()
+
         
-        if not_stalled and close_enough:
+        if not_stalled and close_enough and stopped:
             self.revolver_state = State.READY
         else:
             self.revolver_state = State.BUSY
@@ -124,7 +128,12 @@ class Revolver(Dynamixel_Unstall):
         
     def check_proximity(self):
         return self.get_proximity() < self.POSITION_TOLERANCE
-        
+
+    def check_speed(self):
+        velocity = self.get_velocity()
+        speed = abs(velocity)
+        return speed < math.radians(30)
+
     def get_proximity(self):
         return abs(self.get_position() - self.goal_position)
         

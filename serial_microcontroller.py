@@ -4,7 +4,7 @@ from util import *
 from collections import Counter
 
 class Default():
-    PORT = '/dev/ttyACM0'
+    PORT = '/dev/ttyACM1'
     BAUD = 9600
     
     COLOR_SENSOR_ASK_KEY = '-'
@@ -82,14 +82,14 @@ if __name__ == "__main__":
     serial = SerialMicrocontroller()
     light_state = False
     while(True):
-        print()
+        print("b")
         time.sleep(0.2)
         light_state = not light_state
         if light_state:
             serial.sorter_light_on()
-        else:
-            serial.sorter_light_on()
-        print(serial.get_color_sensor())
+        # else:
+        #     serial.sorter_light_off()
+        # print(serial.get_color_sensor())
         print(serial.get_susan_hall())
         print("White : ", serial.get_white_dispo_sensor())
         print("Black : ", serial.get_black_dispo_sensor())

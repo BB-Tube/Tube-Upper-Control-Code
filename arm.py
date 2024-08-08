@@ -7,7 +7,9 @@ import atexit
 class Default:
     BALL_DICT = {
         Ball.BLACK : math.radians(190),
-        Ball.NONE : math.radians(180),
+        # Ball.NONE : math.radians(180),
+
+        Ball.NONE : math.radians(170),
         Ball.WHITE : math.radians(170)
     }
     POSITION_TOLERANCE = math.tau / 100 # radians
@@ -82,18 +84,22 @@ class Arm(Dynamixel_Unstall):
         super().set_goal_position(position)
         
 if __name__ == "__main__":
-    baud = 57600
-    port = "/dev/ttyUSB0"
+    baud = 1000000
+    port = "/dev/ttyACM0"
     a = Arm(15, port = port, baudrate = baud,
             current = 400,
             tolerance=math.radians(5))
     
+
+    iterator = 0
     while True:
+        iterator +=1 
+        print("---------", iterator)
         print('b')
         a.set_ball(Ball.BLACK)
         while not a.get_state() == State.READY:
             a.update()
-        
+    
         print('w')  
         a.set_ball(Ball.WHITE)
         while not a.get_state() == State.READY:

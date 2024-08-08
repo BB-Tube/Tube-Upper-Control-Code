@@ -1,10 +1,9 @@
-from util_gyz.dynamixel import Dynamixel
+from util_gyz.dynamixel import Dynamixel, Mode
+import math
 
 ### Variables
-BAUD_MICROCONTROLLER = 9600
-PORT_MICROCONTROLLER = "/dev/ttyACM0"
 BAUD_DYNAMIXELS = 1000000
-PORT_DYNAMIXELS = "/dev/ttyUSB0"
+PORT_DYNAMIXELS = "/dev/ttyACM0"
 ID_EMPTIER = 12
 ID_SUSAN = 13
 ID_SORTER_REVOLVER = 14
@@ -54,3 +53,7 @@ for motor in motors:
     print(motor.name)
     print(motor.get_model())
     print(motor.get_baud_rate())
+
+sorter_revolver.set_mode(Mode.VELOCITY)
+sorter_revolver.on()
+sorter_revolver.set_goal_velocity(-math.tau)

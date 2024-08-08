@@ -13,9 +13,9 @@ from susan import Susan
 
 ### Variables
 BAUD_MICROCONTROLLER = 9600
-PORT_MICROCONTROLLER = "/dev/ttyACM0"
+PORT_MICROCONTROLLER = "/dev/ttyACM1"
 BAUD_DYNAMIXELS = 1000000
-PORT_DYNAMIXELS = "/dev/ttyUSB0"
+PORT_DYNAMIXELS = "/dev/ttyACM0"
 ID_EMPTIER = 12
 ID_SUSAN = 13
 ID_SORTER_REVOLVER = 14
@@ -33,13 +33,15 @@ sm = SerialMicrocontroller(
     port = PORT_MICROCONTROLLER,
     baudrate = BAUD_MICROCONTROLLER)
 # Revolver
-sorter_revolver = Revolver(14, 
+sorter_revolver = Revolver(ID_SORTER_REVOLVER, 
     PORT_DYNAMIXELS,BAUD_DYNAMIXELS, 8, flip=True, 
-    current = 500, velocity= 0, offset=math.radians(15))
+    current = 500, velocity= 0, offset=math.radians(5))
+print("sorter_revolver : ", sorter_revolver.get_model())
 # Arm
 sorter_arm = Arm(
     id = ID_SORTER_ARM, port = PORT_DYNAMIXELS, baudrate = BAUD_DYNAMIXELS,
     current = 400, tolerance=math.radians(5))
+print("sorter_arm : ", sorter_arm.get_model())
 # Sorter
 sorter = Sorter(sorter_revolver, sorter_arm, sm)
 ## Emptier
@@ -47,6 +49,7 @@ emptier = Emptier(
     id = ID_EMPTIER,
     port = PORT_DYNAMIXELS,
     baudrate = BAUD_DYNAMIXELS)
+print("emptier : ", emptier.get_model())
 ## Elevator
 elevator = Dynamixel_Cont_Unstall(
     id = ID_ELEVATOR, 
@@ -59,6 +62,7 @@ elevator = Dynamixel_Cont_Unstall(
     back_off_time = 2,
     cooldown_time = .5,
     velocity_tolerance = .05)
+print("elevator : ", elevator.get_model())
 ## Susan
 susan = Susan(
     id = ID_SUSAN,
@@ -79,18 +83,21 @@ dispo_driver = Dynamixel_Cont_Unstall(
     back_off_time = 2,
     cooldown_time = .5,
     velocity_tolerance = .05)
+print("dispo_driver : ", dispo_driver.get_model())
 # Revolver Black
 revolver_black = Revolver(
     ID_DISPO_BLACK, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
     slots = 6, flip=False, current = 300, velocity= math.tau,
     position_tolerance=math.radians(6), 
     offset=math.radians(42))
+print("revolver_black : ", revolver_black.get_model())
 # Revolver White
 revolver_white = Revolver(
     ID_DISPO_WHITE, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
     slots = 6, flip=True, current = 300, velocity= math.tau, 
     position_tolerance=math.radians(6), 
     offset=math.radians(45))
+print("revolver_white : ", revolver_white.get_model())
 # Dispenser
 dispo = Dispenser(
     white_revolver=revolver_white,
@@ -122,6 +129,7 @@ if False:
             print(iterator, " time is ", delta)
             if iterator == 100:
                 break
+
 ## Arm
 while False:
     print('b')
@@ -138,26 +146,33 @@ while False:
     a.set_ball(Ball.NONE)
     while not a.get_state() == State.READY:
         a.update()
+
 ## Emptier
 while(False):
     emptier.open()
     time.sleep(3)
     emptier.close()
     time.sleep(3)
+
 # Elevator          
 while(False):
-    elevator.update()
+    tic = time.time()
+    for i in range(100):
+        elevator.update()
+    toc = time.time()
+    print((toc-tic)/100)
+
 ## Sorter
-while False:
+while True:
     sorter.update()
+
 ### Elevate & Sorter
 if False:
     emptier.open()
-        
     while True:
         sorter.update()
         elevator.update()
-        # time.sleep()
+
 ### Empty Columns
 if False:
     # susan.indicate()
@@ -165,11 +180,11 @@ if False:
     emptier.open()
     while True:
         elevator.update()
-        sorter.update()
+        # sorter.update()
         # susan.go_to_column(i)
         
 ### Elevate & Sorter & Empty 
-if True: 
+if False: 
     emptier.close()
     # print(susan.get_shutdown())
     # susan.reboot()
@@ -192,7 +207,6 @@ if True:
             print(susan.at_column())
             susan.go_to_column_nearest((round(susan.at_column()+1%96)))
             w.wait(10)
-
 
 ### Elevate & Sorter & Dispense 
 if False: 
@@ -239,8 +253,7 @@ if False:
                 wait_sort_elevate(2)
                 emptier.close()
                 increment = 0
-                
-                
+                             
 ### Elevate & Sorter & Dispense 
 if False: 
     increment = 0

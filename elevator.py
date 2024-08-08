@@ -65,12 +65,12 @@ if __name__ == '__main__':
     
     DISPO_DRIVER = "Driver Elevator"
     ELEVATOR_ID = 20
-    PORT = "/dev/ttyUSB0"
+    PORT = "/dev/ttyACM0"
     
     motor = Dynamixel_Cont_Unstall(
         id = ELEVATOR_ID, 
         port = PORT, 
-        baudrate = 57600, 
+        baudrate = 1000000, 
         anticlockwise = False,
         backoff = math.tau,
         current = 900,
