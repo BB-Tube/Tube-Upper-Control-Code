@@ -45,7 +45,7 @@ class Dispenser(object):
         self.dispo_driver = dispo_driver
         self.dispo_state = State.BUSY
         self.dispo_last_positon = self.dispo_driver.get_position()
-        self.dispo_waiting = 0
+        self.dispo_waiting = math.tau
         
         self.microcontroller = microcontroller
         
@@ -158,9 +158,9 @@ class Dispenser(object):
     
 if __name__ == "__main__":
     BAUD_MICROCONTROLLER = 9600
-    PORT_MICROCONTROLLER = "/dev/ttyACM0"
+    PORT_MICROCONTROLLER = "/dev/ttyACM1"
     BAUD_DYNAMIXELS = 1000000
-    PORT_DYNAMIXELS = "/dev/ttyUSB0"
+    PORT_DYNAMIXELS = "/dev/ttyACM0"
     ID_DISPO_INSERTER = 16
     ID_DISPO_WHITE = 17
     ID_DISPO_BLACK = 18
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         
     white_black_alternator = True
     added_ball_state = None
-    while False:
+    while True:
         dispo.update()
         if dispo.get_state() == State.READY:
             dispo.print_states()

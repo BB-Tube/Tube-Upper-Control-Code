@@ -11,6 +11,8 @@ from revolver import Revolver
 from sorter import Sorter
 from susan import Susan
 
+### column 3 is the one to dump
+
 ### Variables
 BAUD_MICROCONTROLLER = 9600
 PORT_MICROCONTROLLER = "/dev/ttyACM1"
@@ -147,6 +149,14 @@ while False:
     while not a.get_state() == State.READY:
         a.update()
 
+### Kill Susan & Open & Elevate & Dispense
+if False:
+    emptier.open()
+    susan.off()
+    while(True):
+        elevator.update()
+        sorter.update()
+
 ## Emptier
 while(False):
     emptier.open()
@@ -163,7 +173,7 @@ while(False):
     print((toc-tic)/100)
 
 ## Sorter
-while True:
+while False:
     sorter.update()
 
 ### Elevate & Sorter
@@ -212,8 +222,9 @@ if False:
 if False: 
     increment = 0
     up_to = 32
+    emptier.open()
+    time.sleep(3)
     emptier.close()
-    time.sleep(1)
     susan.indicate()
     susan.go_to_column_nearest(0)
     
@@ -242,7 +253,7 @@ if False:
             if added_ball:
                 increment += 1
                 white_black_alternator = not white_black_alternator
-                white_black_alternator = False
+                white_black_alternator = True
             if increment >= up_to:
                 wait_sort_elevate(1.5)
                 if round(susan.at_column()) == 95:
@@ -255,11 +266,11 @@ if False:
                 increment = 0
                              
 ### Elevate & Sorter & Dispense 
-if False: 
+if True: 
     increment = 0
     up_to = 32
-    susan.go_to_column_nearest(90)
-    susan.off()
+    # susan.go_to_column_nearest(90)
+    # susan.off()
     
     emptier.open()
     time.sleep(1.5)
@@ -268,6 +279,7 @@ if False:
     white_black_alternator = True
     added_ball_state = None
     while True:
+        dispo.print_states()
         sorter.update()
         elevator.update()
         # time.sleep(.5)
@@ -277,10 +289,10 @@ if False:
             added_ball_state = False
             if white_black_alternator:
                 added_ball = dispo.add_white()
-                print("Add White : ", added_ball)
+                # print("Add White : ", added_ball)
             else:
                 added_ball = dispo.add_black()
-                print("Add Black : ", added_ball)
+                # print("Add Black : ", added_ball)
             if added_ball:
                 increment += 1
                 if increment >= up_to:
@@ -289,4 +301,4 @@ if False:
                     time.sleep(1)
                     emptier.close()
                     increment = 0
-                white_black_alternator = False
+                white_black_alternator = not white_black_alternator

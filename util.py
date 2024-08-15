@@ -19,6 +19,11 @@ class Ball(Enum):
     NONE = 'n'
     WHITE = 'w'
     BLACK = 'b'
+
+BALL_COLOR = { ### BGR 
+    Ball.WHITE: [189, 190, 189],
+    Ball.BLACK: [56, 57, 62]
+}
     
 reverse_lookup = {v.value: v for v in Ball}
 def ball_reverse_index(value):

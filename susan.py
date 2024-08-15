@@ -9,7 +9,7 @@ import atexit
 from serial_microcontroller import SerialMicrocontroller
 
 class Default():
-    MTR_OFFSET = 2.2 / 12 * math.tau
+    MTR_OFFSET = 2.25 / 12 * math.tau
     NAME = "Susan"
     COL_PER_ROTATION = 12
     COL_TOTAL = 96
@@ -19,7 +19,7 @@ class Susan(Dynamixel):
     @classmethod
     def get_default(cls):
         baud = 1000000
-        port = "/dev/ttyUSB0"
+        port = "/dev/ttyACM0"
         ser = SerialMicrocontroller()
         susan = Susan(id = 13, motor_offset= math.tau * 2/12, port=port, baudrate=baud, serialBoi = ser)
         return susan

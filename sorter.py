@@ -12,6 +12,7 @@ from serial_microcontroller import SerialMicrocontroller
 from util import *
 import math
 from color_sensor import ColorSensor
+from camera_color_sensor import CameraColorSensor
 
 class SorterState(Enum):
     READING = auto()
@@ -30,22 +31,24 @@ class Sorter(object):
         self.revolver.set_profile_velocity(math.tau*2)
         self.arm = arm
         self.microcontroller = serialBoi
-        self.colorsensor = ColorSensor()
+        self.colorsensor = CameraColorSensor()
         
         self.sample_size = samples
         self.state = SorterState.READING
-        self.on_off = True # On to start
-
+        self.on()
+        
         self.store = True
       
     def on(self):
         self.on_off = True
         self.revolver.on()
+        self.microcontroller.sorter_light_on()
         self.arm.on()
       
     def off(self):
         self.on_off = False
         self.revolver.off()
+        self.microcontroller.sorter_light_off()
         self.arm.off()
       
     def update(self):
@@ -65,33 +68,17 @@ class Sorter(object):
         # print("updating")
         # time.sleep(1)
         if self.state == SorterState.READING:
-            # print("READING")
             color_reading = self.get_ball_color_camera()
-            # if self.store:
-            #     color_reading = Ball.BLACK
-            #     self.store = False
-            # else:
-            #     color_reading = Ball.BLACK
-            #     self.store = False
-            print("Color Reading: ", color_reading)
             self.arm.set_ball(color_reading)
             self.arm.update()
             self.state = SorterState.PREPPING_ARM
         if self.state == SorterState.PREPPING_ARM:
-            # print("PREPPING_ARM")
             if self.arm.get_state() == State.READY:
-                print("ARM READY")
                 self.revolver.next_slot()
                 self.state = SorterState.MOVING_REVOLVER
-            else:
-                print("ARM BUSY")
         if self.state == SorterState.MOVING_REVOLVER:
-            # print("MOVING_REVOLVER")
             if self.revolver.get_state() == State.READY:
                 self.state = SorterState.READING
-                print("REVOLVER READY")
-            else:
-                print("REVOLVER BUSY")
             
         
     def get_ball_color_sensor(self, sample_count = 0):
@@ -108,15 +95,12 @@ class Sorter(object):
         return ball_reverse_index(ball)
 
     def get_ball_color_camera(self):
-        # time.sleep(.1)
         ball_color = self.colorsensor.get_ball_color()
-        # time.sleep(.1)
-        # print("ball_color: ", ball_color)
         return ball_color
 
 if __name__ == '__main__':
     baud = 1000000
-    port = "/dev/ttyUSB0"
+    port = "/dev/ttyACM0"
     r = Revolver(14, port = port, baudrate = baud, 
         slots = 8, flip=True,
         current = 500, velocity= 0, offset=math.radians(15))
