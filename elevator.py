@@ -11,76 +11,75 @@ class Default():
     CLOSED = math.pi
     JAMMED_CURRENT = 1200 # ma
 
-class Elevator(Dynamixel):
+class Elevator():
     def __init__(self, 
-                 id, port, baudrate,
-                 name = "Emptier",
-                 OPEN = Default.OPEN,
-                 CLOSED = Default.CLOSED):
-        super().__init__(id = id, port=port, baudrate=baudrate, name=name)
-        self.speed = -math.tau * 1
-        self._setup_motor()
-        self.unjamming = False
-        self.jam_position = None
-        
-    def _setup_motor(self):
-        self.off()
-        self.set_mode(Mode.VELOCITY)
-        self.on()
-    
-    def go(self):
-        self.on()
-        self.set_goal_velocity(self.speed)
-    
-    def stop(self):
-        self.set_goal_velocity(0)
-        
-    def reverse(self):
-        self.set_goal_velocity(-self.speed)
+            id = None, 
+            port = None, 
+            baudrate = None, 
+            anticlockwise = False,
+            backoff = math.tau,
+            current = 1000,
+            velocity = math.tau * 3,
+            back_off_time = 2,
+            cooldown_time = .5,
+            velocity_tolerance = .05,
+            name = "elevator",
+            follower_id = 0):
+        self.elevator = Dynamixel_Cont_Unstall(
+            id = id, 
+            port=port, 
+            baudrate=baudrate, 
+            anticlockwise=anticlockwise,
+            backoff=backoff,
+            current=current,
+            velocity=velocity,
+            back_off_time=back_off_time,
+            cooldown_time=cooldown_time,
+            velocity_tolerance=velocity_tolerance)
+        self.elevator_secondary = Dynamixel(
+            id = follower_id,
+            port = port,
+            baudrate = baudrate
+        )
 
     def update(self):
-        if not self.unjamming and self.is_jammed():
-            self.reverse()
-            self.jam_position = self.get_position()
-            
-        if unjamming and self.get_position() < self.jam_position:
-            self.unjamming = False
-            if self.jam_position - self.get_position() > math.pi:
-                self.go()
-    
-    def is_jammed(self): 
-        return self.get_current() > Default.JAMMED_CURRENT
+        self.elevator.update()
+        self.elevator_secondary.set_goal_current(self.elevator.get_current())
+        
+    def on(self):
+        self.elevator.on()
+        self.elevator_secondary.on()
+
+    def off(self):
+        self.elevator.off()
+        self.elevator_secondary.off()
+
+    def get_model(self):
+        return [self.elevator.get_model(), self.elevator_secondary.get_model()]
 
 if __name__ == '__main__':
-    # baud = 57600
-    # port = "/dev/ttyUSB0"
-    # vator = Elevator(id = 20, port=port, baudrate=baud)
-    # vator.set_shutdown(0)
-    # while True:
-    #     time.sleep(.5)
-    #     vator.go()
-    #     print("velocity : ", vator.get_velocity())
-    #     print("current :  ", vator.get_current())
-    # vator.off()
-    
-    DISPO_DRIVER = "Driver Elevator"
-    ELEVATOR_ID = 20
-    PORT = "/dev/ttyACM0"
-    
-    motor = Dynamixel_Cont_Unstall(
-        id = ELEVATOR_ID, 
-        port = PORT, 
-        baudrate = 1000000, 
+    ID_ELEVATOR = 20
+    ID_ELEVATOR_SECONDARY = 19
+    PORT_DYNAMIXELS = "/dev/ttyACM0"
+    BAUD_DYNAMIXELS = 1000000
+
+    elevator = Elevator(
+        id = ID_ELEVATOR, 
+        port = PORT_DYNAMIXELS, 
+        baudrate = BAUD_DYNAMIXELS, 
         anticlockwise = False,
         backoff = math.tau,
-        current = 900,
+        current = 1000,
         velocity = math.tau * 3,
         back_off_time = 2,
         cooldown_time = .5,
-        velocity_tolerance = .05)
+        velocity_tolerance = .05,
+        follower_id = ID_ELEVATOR_SECONDARY)
     
+    elevator.off()
+
     while(True):
-        motor.update()
+        elevator.update()
         
 
 

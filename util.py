@@ -45,3 +45,6 @@ class Waiter:
         
     def if_past(self) -> bool:
         return (time.time() > self.till)
+    
+if __name__ == "__main__":
+    print(ball_reverse_index('w'))

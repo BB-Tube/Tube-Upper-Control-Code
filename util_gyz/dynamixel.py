@@ -142,6 +142,10 @@ class Dynamixel(Motor):
             raise Exception
         ### check stuff
         
+    def reset(self):
+        # Sents a reboot signal to the dynamixel, which resets errors
+        self.packet_handler.reboot(self.port_handler, self.id)
+
     def get_model(self):
         return self.mv.Model(self._read_address(self.mv.Address.MODEL_NUMBER))
            

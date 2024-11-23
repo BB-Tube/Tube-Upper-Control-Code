@@ -117,7 +117,6 @@ class Revolver(Dynamixel_Unstall):
         close_enough = self.check_proximity()
         stopped = self.check_speed()
 
-        
         if not_stalled and close_enough and stopped:
             self.revolver_state = State.READY
         else:

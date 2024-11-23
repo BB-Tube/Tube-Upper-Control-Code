@@ -7,13 +7,98 @@ from collections import Counter
 import math
 import atexit
 from serial_microcontroller import SerialMicrocontroller
+from typing import List, Tuple
+
+# Define your keyframes as (input_position, corrected_position) tuples
+keyframes: List[Tuple[int, float]] = [
+    (0, 0),        
+    (8, 8.4),
+    (16, 16),
+    (24, 23.9),
+    (32, 31.9),
+    (40, 39.8),
+    (48, 48),
+    (56, 56),
+    (64, 64),
+    (72, 72),
+    (80, 80),
+    (88, 88),
+    (96, 95.95)
+    # The 96 case is implicitly handled as a wrap-around to 0
+]
+
+def interpolate_wrapping_forward(input_pos: float, keyframes: List[Tuple[int, float]]) -> float:
+    num_keyframes = len(keyframes)
+    step_size = 8  # The increment step size between keyframes
+    
+    # Normalize the input position to the wrapping range (0-95)
+    input_pos = input_pos % 96
+
+    # Find the keyframes before and after the input position
+    for i in range(num_keyframes):
+        start_keyframe = keyframes[i]
+        end_keyframe = keyframes[(i + 1) % num_keyframes]  # Wrap around using modulo
+        
+        # Adjust end_keyframe to handle wrap-around between 88 and 0
+        if end_keyframe[0] == 0 and input_pos >= start_keyframe[0]:
+            end_input = 96
+        else:
+            end_input = end_keyframe[0]
+        
+        if start_keyframe[0] <= input_pos < end_input:
+            # Linear interpolation
+            start_input, start_corrected = start_keyframe
+            end_corrected = end_keyframe[1]
+            
+            # Calculate the interpolation factor
+            t = (input_pos - start_input) / (end_input - start_input)
+            
+            # Interpolate the corrected position
+            corrected_pos = start_corrected + t * (end_corrected - start_corrected)
+            return corrected_pos
+
+    # This point should not be reached due to the wrapping nature of the keyframes
+    raise ValueError("Interpolation failed; check keyframe setup.")
+
+def interpolate_wrapping_backward(input_pos: float, keyframes: List[Tuple[int, float]]) -> float:
+    num_keyframes = len(keyframes)
+    step_size = 8  # The increment step size between keyframes
+    
+    # Normalize the input position to the wrapping range (0-95)
+    input_pos = input_pos % 96
+
+    # Find the keyframes before and after the input position, but in reverse direction
+    for i in range(num_keyframes):
+        end_keyframe = keyframes[i]
+        start_keyframe = keyframes[(i - 1) % num_keyframes]  # Wrap around using modulo
+
+        # Adjust start_keyframe to handle wrap-around between 0 and 88
+        if start_keyframe[0] == 88 and input_pos < end_keyframe[0]:
+            start_input = -8
+        else:
+            start_input = start_keyframe[0]
+
+        if start_input <= input_pos < end_keyframe[0] or (end_keyframe[0] == 0 and input_pos >= start_keyframe[0]):
+            # Linear interpolation in reverse
+            start_corrected = start_keyframe[1]
+            end_input, end_corrected = end_keyframe
+
+            # Calculate the interpolation factor in reverse direction
+            t = (input_pos - start_input) / (end_input - start_input)
+            
+            # Interpolate the corrected position
+            corrected_pos = start_corrected + t * (end_corrected - start_corrected)
+            return corrected_pos
+
+    # This point should not be reached due to the wrapping nature of the keyframes
+    raise ValueError("Interpolation failed; check keyframe setup.")
 
 class Default():
-    MTR_OFFSET = 2.25 / 12 * math.tau
+    MTR_OFFSET = 2 / 12 * math.tau
     NAME = "Susan"
     COL_PER_ROTATION = 12
     COL_TOTAL = 96
-    CURRENT = 600 # mA
+    CURRENT = 750 # mA
 
 class Susan(Dynamixel):
     @classmethod
@@ -21,7 +106,7 @@ class Susan(Dynamixel):
         baud = 1000000
         port = "/dev/ttyACM0"
         ser = SerialMicrocontroller()
-        susan = Susan(id = 13, motor_offset= math.tau * 2/12, port=port, baudrate=baud, serialBoi = ser)
+        susan = Susan(id = 13, port=port, baudrate=baud, serialBoi = ser)
         return susan
      
     def __init__(self, 
@@ -32,6 +117,8 @@ class Susan(Dynamixel):
                  col_per_rotation = Default.COL_PER_ROTATION,
                  col_total = Default.COL_TOTAL):
         super().__init__(id = id, port=port, baudrate=baudrate, name=name)
+        # self.off()
+        # super().reboot()
         self.cereal = serialBoi
         self.col_per_rotation = col_per_rotation
         self.col_total = col_total
@@ -41,7 +128,8 @@ class Susan(Dynamixel):
                 
     def _setup_motor(self):
         self.off()
-        self.set_mode(Mode.EXTENDED_POSITION_CURRENT)
+        # self.set_mode(Mode.EXTENDED_POSITION_CURRENT)
+        self.set_mode(Mode.EXTENDED_POSITION)
         self.on()
         self.set_goal_current(Default.CURRENT)
         
@@ -58,7 +146,13 @@ class Susan(Dynamixel):
         self.off()
         self.set_mode(Mode.POSITION)
         self.set_mode(Mode.EXTENDED_POSITION_CURRENT)
+        self.set_goal_current(1000)
         self._set_goal_position(0)
+        self.set_profile_velocity(math.tau)
+        self.set_profile_acceleration(math.tau*100)
+        self.set_position_D_gain(100)
+        self.set_position_I_gain(500)
+
         self.on()
         print("susan indicated")
     
@@ -114,8 +208,13 @@ class Susan(Dynamixel):
     def get_dist_to_goal(self):
         return abs(self.get_goal_position() - self.get_position())/math.tau * self.col_per_rotation
 
+    def is_there(self, tolerance = .2):
+        return self.get_dist_to_goal() < tolerance
+        
 if __name__ == '__main__':
     susan = Susan.get_default()
+    print(susan.get_model())
+    susan.on()
     susan.indicate()
     while(True):
         # print("Column at : ", susan.get_column())
@@ -125,11 +224,9 @@ if __name__ == '__main__':
         susan.go_to_column_nearest(number)
         while True:
             x = susan.get_dist_to_goal()
+            time.sleep(.25)
+            print(susan.get_current())
             # print("dist_to_goal, ", x)
-            if abs(x) < .2:
+            if abs(x) < .05:
                 break
         print("Susan at : ", susan.at_column_absolute())
-        
-
-
-

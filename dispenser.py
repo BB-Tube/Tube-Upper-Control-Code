@@ -17,14 +17,10 @@ class DispenserVar():
     OUTLET = 0
 
 class DispenserState(Enum):
-    # Mechansim State
-    ASKING = auto()
-    ADDING = auto()
-    INSERTING = auto()
-    
     # Inserter State
     LOADED = auto()
     UNLOADED = auto()
+    INSERTING = auto()
 
 class Dispenser(object):
     def __init__(self,
@@ -45,12 +41,12 @@ class Dispenser(object):
         self.dispo_driver = dispo_driver
         self.dispo_state = State.BUSY
         self.dispo_last_positon = self.dispo_driver.get_position()
-        self.dispo_waiting = math.tau
+        self.dispo_ready_after_move(math.tau)
         
         self.microcontroller = microcontroller
         
         ### Mechanism
-        self.state = State.READY
+        self.state = State.BUSY
         
         atexit.register(self.off)
         
@@ -76,30 +72,33 @@ class Dispenser(object):
         self.dispo_driver.off()
         
     def print_states(self):
-        is_dispo_ready = self.dispo_driver.get_state() == State.READY 
-        is_dispo_moved = self.dispo_move_enough()
-        is_white_ready = self.white_state == State.READY
-        is_black_ready = self.black_state == State.READY
         
         print()
-        print("Dispo State :    ", is_dispo_ready)
-        print("Dispo Moved :    ", is_dispo_moved)
-        print("White State :    ", is_white_ready)
-        print("Black State :    ", is_black_ready)
-        print("Dispo_State : ", self.state)
+        print("Dispo State :    ", self.dispo_driver.get_state())
+        print("Dispo Moved :    ", self.dispo_move_enough())
+        print("White State :    ", self.black_state)
+        print("Black State :    ", self.black_state)
+        print("Dispo_State :    ", self.state)
         
     def update(self):
         self.dispo_driver.update()
         self.update_white()
         self.update_black()
-        
+
         is_dispo_ready = self.dispo_driver.get_state() == State.READY 
         is_dispo_moved = self.dispo_move_enough()
+        is_white_inserting = self.white_state == DispenserState.INSERTING
+        is_black_inserting = self.black_state == DispenserState.INSERTING
         
-        if is_dispo_ready: # and is_white_ready and is_black_ready:
-            self.state = State.READY
-        else: 
+        if not (is_dispo_ready and is_dispo_moved): # and is_white_ready and is_black_ready:
             self.state = State.BUSY
+            return
+
+        if is_white_inserting or is_black_inserting:
+            self.state = State.BUSY
+            return
+
+        self.state = State.READY
     
     def get_state(self):
         return self.state
@@ -113,21 +112,29 @@ class Dispenser(object):
     def update_white(self):
         self.white_revolver.update()
         white_beam = self.microcontroller.get_white_dispo_sensor()
-        white_revolver_state = self.white_revolver.get_state() == State.READY
-        if white_revolver_state and white_beam:
-            self.white_state = State.READY
-        if white_revolver_state and not white_beam:
+        white_revolver_ready = self.white_revolver.get_state() == State.READY
+
+        if not white_revolver_ready:
+            return None
+
+        if self.white_state == DispenserState.INSERTING:
+            ## inserted ball
+            self.dispo_ready_after_move(math.tau)
+            self.dispo_state = State.BUSY
             self.white_state = DispenserState.UNLOADED
+        if not white_beam:
+            ## failed to load
             self.white_revolver.next_slot()
-        if not white_revolver_state:
-            self.white_state = State.BUSY
+            self.white_state = DispenserState.UNLOADED
+        if white_beam:
+            ## loaded
+            self.white_state = State.READY
         return None
     
     def add_white(self):
         if self.white_state == State.READY:
             self.white_revolver.next_slot()
-            self.dispo_ready_after_move(DispenserVar.INLET_WHITE)
-            self.white_state = DispenserState.UNLOADED
+            self.white_state = DispenserState.INSERTING
             return True
         if not self.white_state == State.READY:
             return False
@@ -136,21 +143,29 @@ class Dispenser(object):
     def update_black(self):
         self.black_revolver.update()
         black_beam = self.microcontroller.get_black_dispo_sensor()
-        black_revolver_state = self.black_revolver.get_state() == State.READY
-        if black_revolver_state and black_beam:
-            self.black_state = State.READY
-        if black_revolver_state and not black_beam:
+        black_revolver_ready = self.black_revolver.get_state() == State.READY
+
+        if not black_revolver_ready:
+            ### revolver moving
+            return None
+
+        if self.black_state == DispenserState.INSERTING:
+            # print("INSERTED BLACK")
+            self.dispo_ready_after_move(math.tau)
+            self.dispo_state = State.BUSY
             self.black_state = DispenserState.UNLOADED
+        if not black_beam:
             self.black_revolver.next_slot()
-        if not black_revolver_state:
-            self.black_state = State.BUSY
+            self.black_state = DispenserState.UNLOADED
+        if black_beam:
+            self.black_state = State.READY
         return None
     
     def add_black(self):
         if self.black_state == State.READY:
             self.black_revolver.next_slot()
-            self.dispo_ready_after_move(DispenserVar.INLET_BLACK)
-            self.black_state = DispenserState.UNLOADED
+            self.black_state = DispenserState.INSERTING
+            self.dispo_state = State.BUSY
             return True
         if not self.black_state == State.READY:
             return False

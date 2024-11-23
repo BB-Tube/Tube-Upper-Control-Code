@@ -4,13 +4,14 @@ import time
 from util import *
 import math
 
-from util_gyz.dynamixel import Dynamixel
 from dynamixel_cont_unstall import Dynamixel_Cont_Unstall
 from serial_microcontroller import SerialMicrocontroller
 from dispenser import Dispenser
 from revolver import Revolver
 from sorter import Sorter
 from susan import Susan
+from elevator import Elevator
+from screen_memory import Screen_Memory
 
 ### column 3 is the one to dump
 
@@ -55,7 +56,7 @@ emptier = Emptier(
     baudrate = BAUD_DYNAMIXELS)
 print("emptier : ", emptier.get_model())
 ## Elevator
-elevator = Dynamixel_Cont_Unstall(
+elevator = Elevator(
     id = ID_ELEVATOR, 
     port = PORT_DYNAMIXELS, 
     baudrate = BAUD_DYNAMIXELS, 
@@ -65,8 +66,8 @@ elevator = Dynamixel_Cont_Unstall(
     velocity = math.tau * 3,
     back_off_time = 2,
     cooldown_time = .5,
-    velocity_tolerance = .05)
-elevator_secondary = Dynamixel(id = ID_ELEVATOR_SECONDARY, baudrate = BAUD_DYNAMIXELS, port=PORT_DYNAMIXELS)
+    velocity_tolerance = .05,
+    follower_id = ID_ELEVATOR_SECONDARY)
 print("elevator : ", elevator.get_model())
 ## Susan
 susan = Susan(
@@ -83,8 +84,8 @@ dispo_driver = Dynamixel_Cont_Unstall(
     baudrate = BAUD_DYNAMIXELS, 
     anticlockwise = False,
     backoff = math.tau,
-    current = 400,
-    velocity = math.tau * 3,
+    current = 500,
+    velocity = math.tau * 6,
     back_off_time = 2,
     cooldown_time = .5,
     velocity_tolerance = .05)
@@ -92,14 +93,14 @@ print("dispo_driver : ", dispo_driver.get_model())
 # Revolver Black
 revolver_black = Revolver(
     ID_DISPO_BLACK, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
-    slots = 6, flip=False, current = 300, velocity= math.tau,
+    slots = 6, flip=False, current = 300, velocity= math.tau * 1,
     position_tolerance=math.radians(6), 
     offset=math.radians(42))
 print("revolver_black : ", revolver_black.get_model())
 # Revolver White
 revolver_white = Revolver(
     ID_DISPO_WHITE, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
-    slots = 6, flip=True, current = 300, velocity= math.tau, 
+    slots = 6, flip=True, current = 300, velocity= math.tau * 1, 
     position_tolerance=math.radians(6), 
     offset=math.radians(45))
 print("revolver_white : ", revolver_white.get_model())
@@ -109,15 +110,75 @@ dispo = Dispenser(
     black_revolver=revolver_black,
     dispo_driver=dispo_driver,
     microcontroller=sm)
+elevator.on()
+w = Waiter()
 
+class ScreenState(Enum):
+    HOME = auto()
+    QUEING = auto()
+    MOVING = auto()
+    BUSY_COLUMN = auto()
 
-emptier.open()
-time.sleep(1)
-sorter.off()
-susan.off()
-emptier.off()
-elevator.off()
-elevator_secondary.off()
-dispo.off()
+class ColumnState(Enum):
+    QUEING = auto()
+    EMPTYING = auto()
+    FILLING = auto()
 
-print(elevator.get_temperature())
+class Screen(object):
+    def __init__(self, memory = Screen_Memory()):
+        self.memory = memory
+
+        self.fill_que = []
+        self.goal = []
+        self.current = []
+
+        self.screen_que = []
+        self.column_que = []
+
+        self.screen_state = State.READY
+        self.column_state = State.READY
+
+        self.empty_waiter = Waiter()
+
+    def on(self):
+        pass
+
+    def off(self):
+        pass
+
+    def update(self):
+        pass
+
+    def screen_update(self):
+        if self.screen_state == State.READY:
+            self.screen_que = self.memory.get_columns_different()
+            if not self.screen_que:
+                self.screen_state = State.BUSY
+                ## move to nearest column needing change
+                self.column_state = ColumnState.QUEING
+        if self.screen_state == State.BUSY:
+            if self.column_state == State.READY:
+                self.screen_state = State.READY
+
+    def column_update(self):
+        if self.column_state == ColumnState.QUEING:
+            if susan.is_there():
+                self.column_state = ColumnState.EMPTYING
+                self.empty_waiter.wait(3)
+                emptier.open()
+        if self.column_state == ColumnState.EMPTYING:
+            if self.empty_waiter.if_past():
+                self.column_state = ColumnState.FILLING
+                emptier.filling()
+        if self.column_state == ColumnState.FILLING:
+            if not self.column_que:
+                emptier.close()
+                self.column_state == State.READY
+            else:
+                pass
+                ### add the ball that is in the que
+
+if __name__ == "__main__":
+    s = Screen()
+    while(True):
+        s.update()

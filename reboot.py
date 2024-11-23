@@ -4,7 +4,6 @@ import time
 from util import *
 import math
 
-from util_gyz.dynamixel import Dynamixel
 from dynamixel_cont_unstall import Dynamixel_Cont_Unstall
 from serial_microcontroller import SerialMicrocontroller
 from dispenser import Dispenser
@@ -26,7 +25,6 @@ ID_SORTER_ARM = 15
 ID_DISPO_INSERTER = 16
 ID_DISPO_WHITE = 17
 ID_DISPO_BLACK = 18
-ID_ELEVATOR_SECONDARY = 19
 ID_ELEVATOR = 20
 
 ### Objects
@@ -66,7 +64,6 @@ elevator = Dynamixel_Cont_Unstall(
     back_off_time = 2,
     cooldown_time = .5,
     velocity_tolerance = .05)
-elevator_secondary = Dynamixel(id = ID_ELEVATOR_SECONDARY, baudrate = BAUD_DYNAMIXELS, port=PORT_DYNAMIXELS)
 print("elevator : ", elevator.get_model())
 ## Susan
 susan = Susan(
@@ -110,14 +107,9 @@ dispo = Dispenser(
     dispo_driver=dispo_driver,
     microcontroller=sm)
 
-
-emptier.open()
-time.sleep(1)
-sorter.off()
-susan.off()
-emptier.off()
-elevator.off()
-elevator_secondary.off()
-dispo.off()
-
-print(elevator.get_temperature())
+susan.reset()
+elevator.reset()
+emptier.reset()
+revolver_white.reset()
+revolver_black.reset()
+dispo_driver.reset()

@@ -10,6 +10,7 @@ from dispenser import Dispenser
 from revolver import Revolver
 from sorter import Sorter
 from susan import Susan
+from elevator import Elevator
 
 ### column 3 is the one to dump
 
@@ -25,6 +26,7 @@ ID_SORTER_ARM = 15
 ID_DISPO_INSERTER = 16
 ID_DISPO_WHITE = 17
 ID_DISPO_BLACK = 18
+ID_ELEVATOR_SECONDARY = 19
 ID_ELEVATOR = 20
 
 ### Objects
@@ -53,7 +55,7 @@ emptier = Emptier(
     baudrate = BAUD_DYNAMIXELS)
 print("emptier : ", emptier.get_model())
 ## Elevator
-elevator = Dynamixel_Cont_Unstall(
+elevator = Elevator(
     id = ID_ELEVATOR, 
     port = PORT_DYNAMIXELS, 
     baudrate = BAUD_DYNAMIXELS, 
@@ -63,7 +65,8 @@ elevator = Dynamixel_Cont_Unstall(
     velocity = math.tau * 3,
     back_off_time = 2,
     cooldown_time = .5,
-    velocity_tolerance = .05)
+    velocity_tolerance = .05,
+    follower_id = ID_ELEVATOR_SECONDARY)
 print("elevator : ", elevator.get_model())
 ## Susan
 susan = Susan(
@@ -80,8 +83,8 @@ dispo_driver = Dynamixel_Cont_Unstall(
     baudrate = BAUD_DYNAMIXELS, 
     anticlockwise = False,
     backoff = math.tau,
-    current = 400,
-    velocity = math.tau * 3,
+    current = 500,
+    velocity = math.tau * 6,
     back_off_time = 2,
     cooldown_time = .5,
     velocity_tolerance = .05)
@@ -89,14 +92,14 @@ print("dispo_driver : ", dispo_driver.get_model())
 # Revolver Black
 revolver_black = Revolver(
     ID_DISPO_BLACK, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
-    slots = 6, flip=False, current = 300, velocity= math.tau,
+    slots = 6, flip=False, current = 300, velocity= math.tau * 1,
     position_tolerance=math.radians(6), 
     offset=math.radians(42))
 print("revolver_black : ", revolver_black.get_model())
 # Revolver White
 revolver_white = Revolver(
     ID_DISPO_WHITE, PORT_DYNAMIXELS, BAUD_DYNAMIXELS, 
-    slots = 6, flip=True, current = 300, velocity= math.tau, 
+    slots = 6, flip=True, current = 300, velocity= math.tau * 1, 
     position_tolerance=math.radians(6), 
     offset=math.radians(45))
 print("revolver_white : ", revolver_white.get_model())
@@ -106,7 +109,7 @@ dispo = Dispenser(
     black_revolver=revolver_black,
     dispo_driver=dispo_driver,
     microcontroller=sm)
-
+elevator.on()
 w = Waiter()
 
 def wait_sort_elevate(wait_time):
@@ -160,17 +163,24 @@ if False:
 ## Emptier
 while(False):
     emptier.open()
+    print("OPEN")
     time.sleep(3)
     emptier.close()
+    print("CLOSE")
+    time.sleep(3)
+    emptier.filling()
+    print("FILLING")
     time.sleep(3)
 
 # Elevator          
-while(False):
-    tic = time.time()
-    for i in range(100):
-        elevator.update()
-    toc = time.time()
-    print((toc-tic)/100)
+if(False):
+    elevator.on()
+    while(True):
+        tic = time.time()
+        for i in range(100):
+            elevator.update()
+        toc = time.time()
+        print((toc-tic)/100)
 
 ## Sorter
 while False:
@@ -178,8 +188,10 @@ while False:
 
 ### Elevate & Sorter
 if False:
+    susan.off()
     emptier.open()
     while True:
+        # print(elevator.get_current())
         sorter.update()
         elevator.update()
 
@@ -197,7 +209,8 @@ if False:
 if False: 
     emptier.close()
     # print(susan.get_shutdown())
-    # susan.reboot()
+    susan.on()
+    print("here")
     susan.indicate()
     susan.go_to_column_nearest(0)
     while susan.get_dist_to_goal() > .5:
@@ -207,7 +220,7 @@ if False:
     w = Waiter()
     w.wait(10)
     
-    susan.off()
+    # susan.off()
     while True:
         sorter.update()
         elevator.update()
@@ -219,7 +232,7 @@ if False:
             w.wait(10)
 
 ### Elevate & Sorter & Dispense 
-if False: 
+if True: 
     increment = 0
     up_to = 32
     emptier.open()
@@ -231,7 +244,7 @@ if False:
     time.sleep(2)
     emptier.open()
     time.sleep(2)
-    emptier.close()
+    emptier.filling()
     
     white_black_alternator = False
     added_ball_state = None
@@ -246,31 +259,35 @@ if False:
             added_ball_state = False
             if white_black_alternator:
                 added_ball = dispo.add_white()
-                print("Add White : ", added_ball)
+                # print("Add White : ", added_ball)
             else:
                 added_ball = dispo.add_black()
-                print("Add Black : ", added_ball)
+                # print("Add Black : ", added_ball)
             if added_ball:
                 increment += 1
                 white_black_alternator = not white_black_alternator
-                white_black_alternator = True
+                # white_black_alternator = True
             if increment >= up_to:
                 wait_sort_elevate(1.5)
-                if round(susan.at_column()) == 95:
-                    break
-                susan.go_to_column(round(susan.at_column()) + 1)
+                emptier.close()
                 wait_sort_elevate(1.5)
+                if round(susan.at_column()) == 95:
+                    exit()
+                susan.go_to_column(round(susan.at_column()) + 1)
+                white_black_alternator = not white_black_alternator
+                wait_sort_elevate(1.5)
+                print(susan.at_column_absolute())
                 emptier.open()
                 wait_sort_elevate(2)
-                emptier.close()
+                emptier.filling()
                 increment = 0
                              
-### Elevate & Sorter & Dispense 
-if True: 
+### Elevate & Sorter & Dispense & Kill Susan
+if False: 
     increment = 0
     up_to = 32
     # susan.go_to_column_nearest(90)
-    # susan.off()
+    susan.off()
     
     emptier.open()
     time.sleep(1.5)
@@ -302,3 +319,11 @@ if True:
                     emptier.close()
                     increment = 0
                 white_black_alternator = not white_black_alternator
+
+### Print Susan
+if True:
+    emptier.filling()
+    susan.off()
+    while(True):
+        time.sleep(.1)
+        print(susan.at_column_absolute())

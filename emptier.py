@@ -11,8 +11,9 @@ class Default():
     ID = 12
     
     ### ID typical is 12
-    OPEN = math.tau * (.95)
-    CLOSED = math.tau * (1/2 - .1)
+    OPEN = math.tau * (7/8)
+    CLOSED = math.tau * (3/8)
+    FILLING = math.tau * (3/8 + .225)
     MAX_CURRENT = 200 # ma
 
 class Emptier(Dynamixel):
@@ -22,10 +23,12 @@ class Emptier(Dynamixel):
                  baudrate = Default.BAUD,
                  name = "Emptier",
                  OPEN = Default.OPEN,
-                 CLOSED = Default.CLOSED):
+                 CLOSED = Default.CLOSED,
+                 FILLING = Default.FILLING):
         super().__init__(id = id, port=port, baudrate=baudrate, name=name)
         self.OPEN_POSITION = OPEN
         self.CLOSED_POSITION = CLOSED
+        self.FILLING = FILLING
         self._setup_motor()
         atexit.register(self.off)
         
@@ -40,6 +43,15 @@ class Emptier(Dynamixel):
     
     def close(self):
         self.set_goal_position(self.CLOSED_POSITION)
+
+    def filling(self):
+        self.set_goal_position(self.FILLING)
+    
+    def test_spin(self):
+        self.off()
+        self.set_mode(Mode.VELOCITY)
+        self.on()
+        self.set_goal_velocity(math.tau)
 
 if __name__ == '__main__':
     emptier = Emptier()
