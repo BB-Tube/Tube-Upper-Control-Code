@@ -3,6 +3,7 @@ from arm import Arm
 import time
 from util import *
 import math
+import numpy as np
 
 from dynamixel_cont_unstall import Dynamixel_Cont_Unstall
 from serial_microcontroller import SerialMicrocontroller
@@ -11,7 +12,8 @@ from revolver import Revolver
 from sorter import Sorter
 from susan import Susan
 from elevator import Elevator
-from screen_memory import Screen_Memory
+from screen_state_rw import ScreenStateRW
+from screen_state_handler import ScreenStateHandler
 
 ### column 3 is the one to dump
 
@@ -125,60 +127,128 @@ class ColumnState(Enum):
     FILLING = auto()
 
 class Screen(object):
-    def __init__(self, memory = Screen_Memory()):
-        self.memory = memory
+    def __init__(self, screen_state_handler : ScreenStateHandler):
+        self.state_handler = screen_state_handler
+
+        self.column_count = screen_state_handler.column_count
+        self.row_count = screen_state_handler.row_count
 
         self.fill_que = []
         self.goal = []
         self.current = []
 
-        self.screen_que = []
+        self.column_manipulating = None
+
         self.column_que = []
+        self.ball_que = []
 
         self.screen_state = State.READY
         self.column_state = State.READY
 
         self.empty_waiter = Waiter()
 
-    def on(self):
-        pass
+        self.boot()
 
-    def off(self):
-        pass
+    def on(self):
+        elevator.on()
+        susan.on()
+        dispo.on()
+        emptier.on()
+        sorter.on()
+
+    def boot(self):
+        self.on()
+        emptier.close()
+        time.sleep(1)
+        susan.indicate()
 
     def update(self):
-        pass
+        time.sleep(.1)
+        print()
+        self.screen_update()
+        self.column_update()
+        sorter.update()
+        elevator.update()
+        dispo.update()
 
     def screen_update(self):
         if self.screen_state == State.READY:
-            self.screen_que = self.memory.get_columns_different()
-            if not self.screen_que:
+            # print("screen state - ready")
+            self.column_que = self.state_handler.get_list_different_columns()
+            print(self.column_que)
+            if len(self.column_que) > 0:
                 self.screen_state = State.BUSY
-                ## move to nearest column needing change
+                self.column_manipulating  = self._nearest_column_in_que()
+                # print("column_picked ", self.column_manipulating)
+                susan.go_to_column_nearest(self.column_manipulating )
+                self.ball_que = self.state_handler.goal.read_column(self.column_manipulating)
+                # print("ball_que ",  self.ball_que)
                 self.column_state = ColumnState.QUEING
         if self.screen_state == State.BUSY:
+            # print("screen state - busy")
             if self.column_state == State.READY:
+                balls_added = self.state_handler.goal.read_column(self.column_manipulating)
+                self.state_handler.now.write_column(self.column_manipulating, balls_added)
                 self.screen_state = State.READY
+
+    def _nearest_column_in_que(self):
+        target = susan.at_column_absolute()
+        max_range = self.column_count
+        numbers = self.column_que
+
+        # Adjust target and numbers to wrap within the range 0 to max_range - 1
+        target %= max_range
+        wrapped_numbers = [num % max_range for num in numbers]
+        
+        # Find the number with the smallest wrapped distance
+        closest = min(
+            wrapped_numbers,
+            key=lambda x: min(abs(x - target), max_range - abs(x - target))
+        )
+    
+        # Return the original number corresponding to the closest wrapped number
+        return numbers[wrapped_numbers.index(closest)]
 
     def column_update(self):
         if self.column_state == ColumnState.QUEING:
+            # print("column_update - queing")
             if susan.is_there():
                 self.column_state = ColumnState.EMPTYING
                 self.empty_waiter.wait(3)
                 emptier.open()
         if self.column_state == ColumnState.EMPTYING:
+            # print("column_update - emptying")
             if self.empty_waiter.if_past():
                 self.column_state = ColumnState.FILLING
                 emptier.filling()
         if self.column_state == ColumnState.FILLING:
-            if not self.column_que:
+            # print("column_update - filling")
+            if len(self.ball_que) == 0:
+                # print("ball que done")
                 emptier.close()
-                self.column_state == State.READY
+                self.column_state = State.READY
             else:
-                pass
-                ### add the ball that is in the que
+                ball_added = self.feed_ball(self.ball_que[0])
+                print(ball_added)
+                if (ball_added):
+                    # print("ball inserted")
+                    self.ball_que = np.delete(self.ball_que, 0)
+
+    def feed_ball(self, ball : Ball):
+        if ball == Ball.NONE:
+            return True
+        if ball == Ball.WHITE:
+            # print("Trying White")
+            return dispo.add_white()
+        if ball == Ball.BLACK:
+            # print("Trying Black")
+            return dispo.add_black()
+        return False
 
 if __name__ == "__main__":
-    s = Screen()
+    now = ScreenStateRW('screen_state_now.json')
+    goal = ScreenStateRW('screen_state_goal.json')
+    memory_handler = ScreenStateHandler(now, goal)  
+    s = Screen(memory_handler)
     while(True):
         s.update()

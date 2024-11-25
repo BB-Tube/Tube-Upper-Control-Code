@@ -206,7 +206,7 @@ if False:
         # susan.go_to_column(i)
         
 ### Elevate & Sorter & Empty 
-if False: 
+if True: 
     emptier.close()
     # print(susan.get_shutdown())
     susan.on()

@@ -150,8 +150,9 @@ class Susan(Dynamixel):
         self._set_goal_position(0)
         self.set_profile_velocity(math.tau)
         self.set_profile_acceleration(math.tau*100)
-        self.set_position_D_gain(100)
-        self.set_position_I_gain(500)
+        self.set_position_D_gain(200)
+        self.set_position_I_gain(300)
+        self.set_position_P_gain(500)
 
         self.on()
         print("susan indicated")

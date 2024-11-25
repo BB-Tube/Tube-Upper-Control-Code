@@ -16,7 +16,7 @@ class StalledState(Enum):
     COOLDOWN = auto()
     
 class Ball(Enum):
-    NONE = 'n'
+    NONE = ' '
     WHITE = 'w'
     BLACK = 'b'
 
