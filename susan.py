@@ -211,6 +211,9 @@ class Susan(Dynamixel):
 
     def is_there(self, tolerance = .2):
         return self.get_dist_to_goal() < tolerance
+    
+    def is_moving(self, tolerance = .01):
+        return self.get_velocity() > tolerance
         
 if __name__ == '__main__':
     susan = Susan.get_default()

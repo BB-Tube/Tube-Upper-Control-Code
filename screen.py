@@ -115,6 +115,8 @@ dispo = Dispenser(
 elevator.on()
 w = Waiter()
 
+susan.reset()
+
 class ScreenState(Enum):
     HOME = auto()
     QUEING = auto()
@@ -146,6 +148,7 @@ class Screen(object):
         self.column_state = State.READY
 
         self.empty_waiter = Waiter()
+        self.sorter_rest_waiter = Waiter()
 
         self.boot()
 
@@ -164,7 +167,7 @@ class Screen(object):
 
     def update(self):
         time.sleep(.1)
-        print()
+        # print()
         self.screen_update()
         self.column_update()
         sorter.update()
@@ -184,6 +187,10 @@ class Screen(object):
                 self.ball_que = self.state_handler.goal.read_column(self.column_manipulating)
                 # print("ball_que ",  self.ball_que)
                 self.column_state = ColumnState.QUEING
+            else:
+                susan.go_to_column_nearest(0)
+                if susan.is_there():
+                    emptier.close()
         if self.screen_state == State.BUSY:
             # print("screen state - busy")
             if self.column_state == State.READY:
@@ -212,9 +219,10 @@ class Screen(object):
     def column_update(self):
         if self.column_state == ColumnState.QUEING:
             # print("column_update - queing")
-            if susan.is_there():
+            if susan.is_there() and not susan.is_moving() and self.sorter_rest_waiter.if_past():
                 self.column_state = ColumnState.EMPTYING
                 self.empty_waiter.wait(3)
+                self.sorter_rest_waiter.wait(10)
                 emptier.open()
         if self.column_state == ColumnState.EMPTYING:
             # print("column_update - emptying")
@@ -225,11 +233,11 @@ class Screen(object):
             # print("column_update - filling")
             if len(self.ball_que) == 0:
                 # print("ball que done")
-                emptier.close()
+                emptier.filling()
                 self.column_state = State.READY
             else:
                 ball_added = self.feed_ball(self.ball_que[0])
-                print(ball_added)
+                # print(ball_added)
                 if (ball_added):
                     # print("ball inserted")
                     self.ball_que = np.delete(self.ball_que, 0)

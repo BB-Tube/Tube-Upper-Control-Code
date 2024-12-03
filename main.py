@@ -206,7 +206,7 @@ if False:
         # susan.go_to_column(i)
         
 ### Elevate & Sorter & Empty 
-if True: 
+if False: 
     emptier.close()
     # print(susan.get_shutdown())
     susan.on()
@@ -232,7 +232,7 @@ if True:
             w.wait(10)
 
 ### Elevate & Sorter & Dispense 
-if True: 
+if False: 
     increment = 0
     up_to = 32
     emptier.open()
