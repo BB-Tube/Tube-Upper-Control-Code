@@ -40,7 +40,7 @@ class Dispenser(object):
         ### Setup Driver
         self.dispo_driver = dispo_driver
         self.dispo_state = State.BUSY
-        self.dispo_last_positon = self.dispo_driver.get_position()
+        self.log_dispenser_pos()
         self.dispo_ready_after_move(math.tau)
         
         self.microcontroller = microcontroller
@@ -132,6 +132,8 @@ class Dispenser(object):
         return None
     
     def add_white(self):
+        if not self.get_state() == State.READY:
+            return False
         if self.white_state == State.READY:
             self.white_revolver.next_slot()
             self.white_state = DispenserState.INSERTING
@@ -162,6 +164,8 @@ class Dispenser(object):
         return None
     
     def add_black(self):
+        if not self.get_state() == State.READY:
+            return False
         if self.black_state == State.READY:
             self.black_revolver.next_slot()
             self.black_state = DispenserState.INSERTING

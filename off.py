@@ -111,7 +111,7 @@ dispo = Dispenser(
     microcontroller=sm)
 
 
-emptier.open()
+emptier.close()
 time.sleep(1)
 sorter.off()
 susan.off()

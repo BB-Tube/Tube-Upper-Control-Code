@@ -35,10 +35,15 @@ class Sorter(object):
         
         self.sample_size = samples
         self.state = SorterState.READING
+        # self.off()
+        # self.reset()
         self.on()
-        
         self.store = True
       
+    def reset(self):
+        self.revolver.reset()
+        self.arm.reset()
+
     def on(self):
         self.on_off = True
         self.revolver.on()

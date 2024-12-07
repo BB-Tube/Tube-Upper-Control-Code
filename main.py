@@ -182,12 +182,13 @@ if(False):
         toc = time.time()
         print((toc-tic)/100)
 
-## Sorter
-while False:
+## Sorteråå
+while True:
+    print("sorter updating")
     sorter.update()
 
 ### Elevate & Sorter
-if False:
+if True:
     susan.off()
     emptier.open()
     while True:

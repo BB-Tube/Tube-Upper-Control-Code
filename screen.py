@@ -138,7 +138,7 @@ class Screen(object):
         self.fill_que = []
         self.goal = []
         self.current = []
-
+ 
         self.column_manipulating = None
 
         self.column_que = []
@@ -149,6 +149,7 @@ class Screen(object):
 
         self.empty_waiter = Waiter()
         self.sorter_rest_waiter = Waiter()
+        self.dispenser_cooldown_waiter = Waiter()
 
         self.boot()
 
@@ -159,6 +160,13 @@ class Screen(object):
         emptier.on()
         sorter.on()
 
+    def off(self):
+        elevator.off()
+        susan.off()
+        dispo.off()
+        emptier.off()
+        sorter.off()
+
     def boot(self):
         self.on()
         emptier.close()
@@ -166,7 +174,6 @@ class Screen(object):
         susan.indicate()
 
     def update(self):
-        time.sleep(.1)
         # print()
         self.screen_update()
         self.column_update()
@@ -180,6 +187,7 @@ class Screen(object):
             self.column_que = self.state_handler.get_list_different_columns()
             print(self.column_que)
             if len(self.column_que) > 0:
+                self.on()
                 self.screen_state = State.BUSY
                 self.column_manipulating  = self._nearest_column_in_que()
                 # print("column_picked ", self.column_manipulating)
@@ -190,6 +198,7 @@ class Screen(object):
             else:
                 susan.go_to_column_nearest(0)
                 if susan.is_there():
+                    self.off()
                     emptier.close()
         if self.screen_state == State.BUSY:
             # print("screen state - busy")
@@ -232,15 +241,15 @@ class Screen(object):
         if self.column_state == ColumnState.FILLING:
             # print("column_update - filling")
             if len(self.ball_que) == 0:
-                # print("ball que done")
-                emptier.filling()
-                self.column_state = State.READY
-            else:
-                ball_added = self.feed_ball(self.ball_que[0])
-                # print(ball_added)
-                if (ball_added):
-                    # print("ball inserted")
-                    self.ball_que = np.delete(self.ball_que, 0)
+                if dispo.dispo_move_enough():
+                    if self.dispenser_cooldown_waiter.if_past():
+                        emptier.filling()
+                        self.column_state = State.READY
+                else:
+                    self.dispenser_cooldown_waiter.wait(1)
+            elif(self.feed_ball(self.ball_que[0])):
+                self.ball_que = np.delete(self.ball_que, 0)
+                self.dispenser_cooldown_waiter.wait(1)
 
     def feed_ball(self, ball : Ball):
         if ball == Ball.NONE:

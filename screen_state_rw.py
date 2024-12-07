@@ -52,6 +52,7 @@ class ScreenStateRW:
         :param col_index: Index of the column to read.
         """
         self.load_screen()
+        # print(col_index)
         if 0 <= col_index < self.columns:
             column_data_chars = self.screen[col_index]
         else:
