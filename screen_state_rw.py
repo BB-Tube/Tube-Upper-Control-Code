@@ -64,6 +64,15 @@ class ScreenStateRW:
             column_data[i] = ball_reverse_index(column_data_chars[i])
 
         return column_data
+    
+    def read_screen(self):
+        screen = np.full(self.columns, None)
+        for i in range(self.columns):
+            screen[i] = self.read_column(i)
+
+    def write_screen(self, screen_data):
+        for i in range(self.columns):
+            self.write_column(i, screen[i])
 
     def write_column(self, col_index, column_data):
         """

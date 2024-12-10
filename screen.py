@@ -138,7 +138,7 @@ class Screen(object):
         self.fill_que = []
         self.goal = []
         self.current = []
- 
+
         self.column_manipulating = None
 
         self.column_que = []
